@@ -1,6 +1,4 @@
-const assertType = <T>(_: T) => {};
-
-class Api<
+export class Api<
   const A extends Record<string, Endpoint<"string" | "number">>,
 > {
   constructor(
@@ -8,7 +6,7 @@ class Api<
   ) {
   }
 
-  handler = (request: Request) => {
+  serve = (request: Request) => {
     const url = new URL(request.url);
     const path = url.pathname;
     const endpoint = this.api[path];
@@ -19,7 +17,7 @@ class Api<
   };
 }
 
-class Endpoint<
+export class Endpoint<
   T extends "string" | "number",
 > {
   constructor(
@@ -48,44 +46,3 @@ class Endpoint<
     }
   };
 }
-
-const api = new Api({
-  "/hello": new Endpoint(
-    "string",
-    (param) => {
-      assertType<string>(param);
-      return new Response(`Hello ${param}`);
-    },
-  ),
-  "/age": new Endpoint(
-    "number",
-    (param) => {
-      assertType<number>(param);
-      return new Response(`You are ${param} years old`);
-    },
-  ),
-});
-
-Deno.serve({ port: 8080 }, (request) => {
-  const response = api.handler(request);
-  return response;
-});
-
-class Client<
-  const A extends Record<string, Endpoint<"string" | "number">>,
-> {
-  async request<T extends keyof A & string>(
-    path: T,
-    param: A[T] extends Endpoint<infer U>
-      ? (U extends "string" ? string : U extends "number" ? number : never)
-      : never,
-  ) {
-    const response = await fetch(`http://localhost:8080${path}?param=${param}`);
-    return response.text();
-  }
-}
-
-const client = new Client<typeof api["api"]>();
-
-await client.request("/hello", "world");
-await client.request("/age", 42);
