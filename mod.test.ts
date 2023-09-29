@@ -18,14 +18,18 @@ setup({
 
 Deno.test("simple request", async () => {
   const api = new Api({
-    "/hello": new Endpoint(
+    "": new Endpoint(
+      {},
+      () => new Response("Welcome"),
+    ),
+    "hello": new Endpoint(
       { name: { type: "string" } },
       (params) => {
         assertType<{ name: string }>(params);
         return new Response(`Hello ${params.name}`);
       },
     ),
-    "/age": new Endpoint(
+    "age": new Endpoint(
       { age: { type: "number" } },
       (params) => {
         assertType<{ age: number }>(params);
@@ -41,21 +45,25 @@ Deno.test("simple request", async () => {
   const client = new Fetcher<typeof api["api"]>("http://localhost:8123");
   await delay(100);
   assertEquals(
-    await client.fetch(["/hello"], { name: "world" }),
+    await client.fetch("", {}),
+    "Welcome",
+  );
+  assertEquals(
+    await client.fetch("hello", { name: "world" }),
     "Hello world",
   );
   assertEquals(
-    await client.fetch(["/age"], { age: 42 }),
+    await client.fetch("age", { age: 42 }),
     "You are 42 years old",
   );
   assertEquals(
     // @ts-expect-error
-    await client.fetch(["/age"], { age: "old" }),
+    await client.fetch("age", { age: "old" }),
     "Invalid number param age",
   );
   assertEquals(
     // @ts-expect-error
-    await client.fetch(["/hellooo"], { name: "world" }),
+    await client.fetch("hellooo", { name: "world" }),
     "Not found",
   );
   controller.abort();
@@ -64,15 +72,19 @@ Deno.test("simple request", async () => {
 
 Deno.test("subapi request", async () => {
   const api = new Api({
-    "/say/hello": new Endpoint(
+    "say/hello": new Endpoint(
       { name: { type: "string" } },
       (params) => {
         assertType<{ name: string }>(params);
         return new Response(`Hello ${params.name}`);
       },
     ),
-    "/subapi": new Api({
-      "/age": new Endpoint(
+    "subapi": new Api({
+      "": new Endpoint(
+        {},
+        () => new Response("Welcome to sub API"),
+      ),
+      "age": new Endpoint(
         { age: { type: "number" } },
         (params) => {
           assertType<{ age: number }>(params);
@@ -89,36 +101,40 @@ Deno.test("subapi request", async () => {
   const client = new Fetcher<typeof api["api"]>("http://localhost:8125");
   await delay(100);
   assertEquals(
-    await client.fetch(["/say/hello"], { name: "world" }),
+    await client.fetch("subapi/", {}),
+    "Welcome to sub API",
+  );
+  assertEquals(
+    await client.fetch("say/hello", { name: "world" }),
     "Hello world",
   );
   assertEquals(
-    await client.fetch(["/subapi", "/age"], { age: 42 }),
+    await client.fetch("subapi/age", { age: 42 }),
     "You are 42 years old",
   );
   assertEquals(
     // @ts-expect-error
-    await client.fetch(["/subapi", "/age"], { age: "old" }),
+    await client.fetch("subapi/age", { age: "old" }),
     "Invalid number param age",
   );
   assertEquals(
     // @ts-expect-error
-    await client.fetch(["/subapi", "/age"], { name: "world" }),
+    await client.fetch("subapi/age", { name: "world" }),
     "Missing param age",
   );
   assertEquals(
     // @ts-expect-error
-    await client.fetch(["/subapi", "/name"], { name: "world" }),
+    await client.fetch("subapi/name", { name: "world" }),
     "Not found",
   );
   assertEquals(
     // @ts-expect-error
-    await client.fetch(["/say/hello", "/subpath"], { name: "world" }),
+    await client.fetch("say/hello/subpath", { name: "world" }),
     "Not found",
   );
   assertEquals(
     // @ts-expect-error
-    await client.fetch(["/subapi", "/age", "/subpath"], { age: 42 }),
+    await client.fetch("subapi/age/subpath", { age: 42 }),
     "Not found",
   );
 

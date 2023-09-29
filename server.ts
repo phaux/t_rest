@@ -14,7 +14,7 @@ export class Api<
     for (const key in this.api) {
       // turn key into regexp where {param} become capture groups
       const keyRegexp = new RegExp(
-        `^${escape(key)}(?<rest>|/.*)$`
+        `^/${escape(key)}(?<rest>|/.*)$`
           .replace(
             /\\\{([\w][\w\d]*)\\\}/g,
             (_match, param) => `(?<${param}>[^/]+)`,

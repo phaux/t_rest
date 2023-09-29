@@ -3,20 +3,21 @@ import { Api, Endpoint, QuerySchema, queryType } from "./server.ts";
 type apiPath<
   A extends { [path: string]: Endpoint<QuerySchema> | Api<any> },
 > = {
-  [K in keyof A & string]: A[K] extends Endpoint<any> ? readonly [K]
-    : A[K] extends Api<infer B> ? readonly [K, ...apiPath<B>]
+  [K in keyof A & string]: A[K] extends Endpoint<any> ? `${K}`
+    : A[K] extends Api<infer B> ? `${K}/${apiPath<B>}`
     : never;
 }[keyof A & string];
 
 type pathParams<
   A extends { [path: string]: Endpoint<QuerySchema> | Api<any> },
-  P extends readonly string[],
-> = P extends
-  readonly [infer K extends keyof A & string, ...infer R extends string[]] ? (
-    A[K] extends Endpoint<infer T> ? T
-      : A[K] extends Api<infer B> ? pathParams<B, R>
-      : never
+  P extends string,
+> = P extends keyof A & string ? (
+    A[P] extends Endpoint<infer T> ? T : never
   )
+  : P extends `${infer K extends keyof A & string}/${infer R}` ? (
+      A[K] extends Api<infer B> ? pathParams<B, R>
+        : never
+    )
   : never;
 
 export class Fetcher<
@@ -30,7 +31,7 @@ export class Fetcher<
     path: P,
     params: queryType<pathParams<A, P>>,
   ) {
-    const url = new URL(path.join(""), this.baseUrl);
+    const url = new URL(path, this.baseUrl);
     for (const key in params) {
       url.searchParams.set(key, params[key] as string);
     }
