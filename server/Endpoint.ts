@@ -2,8 +2,8 @@ import { QuerySchema, queryType, validateQuery } from "./query.ts";
 import { BodySchema, bodyType, validateBody } from "./body.ts";
 
 export class Endpoint<
-  const Q extends QuerySchema = QuerySchema,
-  const B extends BodySchema = BodySchema,
+  const Q extends QuerySchema | undefined | null,
+  const B extends BodySchema | undefined | null,
   const R extends ApiResponse = ApiResponse,
 > {
   #handler: (input: {
@@ -13,7 +13,12 @@ export class Endpoint<
 
   constructor(
     readonly schema: { query: Q; body: B },
-    handler: (input: { query: queryType<Q>; body: bodyType<B> }) => R,
+    handler: (
+      input: {
+        query: Q extends object ? queryType<Q> : undefined | null;
+        body: B extends object ? bodyType<B> : undefined | null;
+      },
+    ) => R,
   ) {
     this.#handler = handler as any;
   }
@@ -21,22 +26,26 @@ export class Endpoint<
   handle = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
 
-    let requestQuery: unknown;
-    try {
-      requestQuery = validateQuery(this.schema.query, url.searchParams);
-    } catch (error) {
-      return new Response(`Bad request: Invalid query: ${error.message}`, {
-        status: 400,
-      });
+    let requestQuery: unknown = undefined;
+    if (this.schema.query != null) {
+      try {
+        requestQuery = validateQuery(this.schema.query, url.searchParams);
+      } catch (error) {
+        return new Response(`Bad request: Invalid query: ${error.message}`, {
+          status: 400,
+        });
+      }
     }
 
     let requestBody: unknown;
-    try {
-      requestBody = await validateBody(this.schema.body, request);
-    } catch (error) {
-      return new Response(`Bad request: Invalid body: ${error.message}`, {
-        status: 400,
-      });
+    if (this.schema.body != null) {
+      try {
+        requestBody = await validateBody(this.schema.body, request);
+      } catch (error) {
+        return new Response(`Bad request: Invalid body: ${error.message}`, {
+          status: 400,
+        });
+      }
     }
 
     const response = this.#handler({
@@ -56,7 +65,7 @@ export class Endpoint<
       }
       default: {
         throw new Error(
-          `Unknown response body type ${(requestBody as any).type}`,
+          `Unknown response body type ${(requestBody as never)["type"]}`,
         );
       }
     }

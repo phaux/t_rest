@@ -1,6 +1,7 @@
 import { escape } from "https://deno.land/std@0.203.0/regexp/escape.ts";
 import { Endpoint } from "./Endpoint.ts";
 import { QuerySchema } from "./query.ts";
+import { BodySchema } from "./body.ts";
 
 export class Api<
   const A extends RouteMap,
@@ -44,15 +45,30 @@ export class Api<
 }
 
 export type RouteMap = {
-  [path: string]: Route | Api<any>;
+  [path: string]: Route | Api<RouteMap>;
 };
 
 export type Route = {
-  GET?: Endpoint<QuerySchema, undefined | null>;
-  POST?: Endpoint;
-  PUT?: Endpoint;
-  PATCH?: Endpoint;
-  DELETE?: Endpoint<QuerySchema, undefined | null>;
+  GET?: Endpoint<
+    QuerySchema | undefined | null,
+    undefined | null
+  >;
+  POST?: Endpoint<
+    QuerySchema | undefined | null,
+    BodySchema | undefined | null
+  >;
+  PUT?: Endpoint<
+    QuerySchema | undefined | null,
+    BodySchema | undefined | null
+  >;
+  PATCH?: Endpoint<
+    QuerySchema | undefined | null,
+    BodySchema | undefined | null
+  >;
+  DELETE?: Endpoint<
+    QuerySchema | undefined | null,
+    undefined | null
+  >;
 };
 
 export type Method = keyof Route;

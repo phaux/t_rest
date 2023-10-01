@@ -40,7 +40,7 @@ export function validateJson<T extends JsonSchema>(
       if (typeof value != "object" || value == null) {
         throw new Error(`Expected ${path.join(".")} to be an object`);
       }
-      const result: any = {};
+      const result: Record<string, unknown> = {};
       for (const key in schema.properties) {
         result[key] = validateJson(
           schema.properties[key],
@@ -48,10 +48,10 @@ export function validateJson<T extends JsonSchema>(
           [...path, key],
         );
       }
-      return result;
+      return result as jsonType<T>;
     }
     default: {
-      throw new Error(`Unknown schema type ${(schema as any).type}`);
+      throw new Error(`Unknown JSON type ${schema["type"]}`);
     }
   }
 }

@@ -332,12 +332,14 @@ Deno.test("request with body", async () => {
   await delay(100);
   assertEquals(
     await client.fetch("hello", "POST", {
+      type: "text/plain",
       body: "world",
     }),
     { status: 201, type: "text/plain", body: "Hello world" },
   );
   assertEquals(
     await client.fetch("hello", "PUT", {
+      type: "application/json",
       body: { name: "world" },
     }),
     { status: 200, type: "application/json", body: ["Hello", "world", "!"] },
@@ -345,6 +347,7 @@ Deno.test("request with body", async () => {
   assertEquals(
     // @ts-expect-error - invalid method
     await client.fetch("hello", "PATCH", {
+      type: "application/json",
       body: { name: "world" },
     }),
     {
@@ -355,6 +358,7 @@ Deno.test("request with body", async () => {
   );
   assertEquals(
     await client.fetch("hello", "PUT", {
+      type: "application/json",
       // @ts-expect-error - invalid body
       body: { name: 123 },
     }),
@@ -442,6 +446,7 @@ Deno.test("can return custom error", async () => {
   await delay(100);
   {
     const badLoginResp = await client.fetch("login", "POST", {
+      type: "application/json",
       body: { username: "admin", password: "wrong" },
     });
     assertType<200 | 400 | 401 | 500>(badLoginResp.status);
@@ -459,6 +464,82 @@ Deno.test("can return custom error", async () => {
       { status: 401, type: "text/plain", body: "Unauthorized" },
     );
   }
+  controller.abort();
+  await server.finished;
+});
+
+Deno.test("form data request", async () => {
+  const api = new Api({
+    "": {
+      POST: new Endpoint(
+        {
+          body: {
+            type: "multipart/form-data",
+            schema: {
+              name: { kind: "value", type: "string" },
+              age: { kind: "value", type: "integer" },
+              metadata: {
+                kind: "file",
+                type: "application/json",
+                schema: {
+                  type: "object",
+                  properties: {
+                    tags: { type: "array", items: { type: "string" } },
+                  },
+                },
+              },
+              photo: { kind: "file", type: "application/octet-stream" },
+            },
+          },
+          query: null,
+        },
+        ({ body }) => {
+          assertType<string>(body.name);
+          assertType<number>(body.age);
+          assertType<Blob>(body.photo);
+          assertType<{ tags: string[] }>(body.metadata);
+          return {
+            status: 200,
+            type: "application/json",
+            body: {
+              message: `Hello ${body.name}, you are ${body.age} years old`,
+              photoSize: body.photo.size,
+              tagsCount: body.metadata.tags.length,
+            },
+          };
+        },
+      ),
+    },
+  });
+  const controller = new AbortController();
+  const server = Deno.serve(
+    { port: 8129, signal: controller.signal },
+    api.serve,
+  );
+  const client = new Client<typeof api>("http://localhost:8129");
+  await delay(100);
+  assertEquals(
+    await client.fetch("", "POST", {
+      type: "multipart/form-data",
+      body: {
+        name: "John",
+        age: 42,
+        metadata: {
+          tags: ["tag1", "tag2"],
+        },
+        photo: new File([new Uint8Array(1024)], "photo.jpg"),
+      },
+    }),
+    {
+      status: 200,
+      type: "application/json",
+      body: {
+        message: "Hello John, you are 42 years old",
+        photoSize: 1024,
+        tagsCount: 2,
+      },
+    },
+  );
   controller.abort();
   await server.finished;
 });

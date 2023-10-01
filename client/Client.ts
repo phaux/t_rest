@@ -5,7 +5,7 @@ import type { BodySchema, bodyType } from "../server/body.ts";
 import type { QuerySchema, queryType } from "../server/query.ts";
 
 export class Client<
-  const A extends Api<any>,
+  const A extends Api<RouteMap>,
 > {
   constructor(
     readonly baseUrl: string,
@@ -17,29 +17,56 @@ export class Client<
   >(
     path: P,
     method: M,
-    input: optionalIfEmpty<omitNullish<pathInput<A["api"], P, M>>>,
+    input: pathInput<A["api"], P, M>,
   ): Promise<pathOutput<A["api"], P, M>> {
-    const { query, body } = (input ?? {}) as pathInput<A["api"], P, M>;
-    const url = new URL(path, this.baseUrl);
+    const { query, type, body } = input ?? {};
+    const requestUrl = new URL(path, this.baseUrl);
     if (query) {
       for (const key in query) {
-        url.searchParams.set(key, String(query[key]));
+        requestUrl.searchParams.set(key, String(query[key]));
       }
     }
-    const response = await fetch(url.toString(), {
-      method,
-      body: typeof body == "string"
-        ? body
-        : body !== undefined
-        ? JSON.stringify(body)
-        : undefined,
-    });
-    const responseContentType = response.headers.get("content-type");
-    const [responseType, _responseTypeParams] = responseContentType
-      ? parseMediaType(responseContentType)
-      : [null, null];
+    const request: RequestInit = { method };
+    if (type) {
+      switch (type) {
+        case "text/plain": {
+          request.body = body;
+          break;
+        }
+        case "application/json": {
+          request.headers = { "content-type": "application/json" };
+          request.body = JSON.stringify(body);
+          break;
+        }
+        case "multipart/form-data": {
+          const formData = new FormData();
+          for (const key in body) {
+            const value = body[key];
+            if (typeof value == "string" || typeof value == "number") {
+              formData.set(key, String(value));
+            }
+            if (typeof value == "object" && value != null) {
+              const jsonBlob = new Blob([JSON.stringify(value)], {
+                type: "application/json",
+              });
+              formData.set(key, jsonBlob);
+            }
+            if ((value as any) instanceof Blob) {
+              formData.set(key, value);
+            }
+          }
+          request.body = formData;
+          break;
+        }
+      }
+    }
+
+    const response = await fetch(requestUrl, request);
+    const [responseType, _] = parseMediaType(
+      response.headers.get("content-type") ?? "text/plain",
+    );
+
     switch (responseType) {
-      case null:
       case "text/plain": {
         return {
           status: response.status,
@@ -75,7 +102,8 @@ type pathMethods<
   P extends string,
 > = P extends keyof A & string ? ({
     [K in keyof A[P] & string]: A[P][K] extends
-      Endpoint<QuerySchema, BodySchema, ApiResponse> ? A[P][K]
+      Endpoint<QuerySchema | undefined | null, BodySchema | undefined | null>
+      ? A[P][K]
       : never;
   })
   : P extends `${infer K extends keyof A & string}/${infer R}`
@@ -86,9 +114,14 @@ type pathInput<
   A extends RouteMap,
   P extends string,
   M extends keyof pathMethods<A, P>,
-> = pathMethods<A, P>[M] extends
-  Endpoint<infer Q extends QuerySchema, infer B extends BodySchema>
-  ? { query: queryType<Q>; body: bodyType<B> }
+> = pathMethods<A, P>[M] extends Endpoint<
+  infer Q extends QuerySchema | undefined | null,
+  infer B extends BodySchema | undefined | null
+> ?
+    & (Q extends object ? { query: queryType<Q> }
+      : { query?: undefined | null } | undefined | null)
+    & (B extends object ? { type: B["type"]; body: bodyType<B> }
+      : { type?: undefined | null; body?: undefined | null } | undefined | null)
   : never;
 
 type pathOutput<
@@ -96,28 +129,11 @@ type pathOutput<
   P extends string,
   M extends keyof pathMethods<A, P>,
 > = pathMethods<A, P>[M] extends Endpoint<
-  QuerySchema,
-  BodySchema,
+  QuerySchema | undefined | null,
+  BodySchema | undefined | null,
   infer R extends ApiResponse
 > ?
     | R
     | { status: 400; type: "text/plain"; body: string }
     | { status: 500; type: "text/plain"; body: string }
   : never;
-
-/**
- * Make object's properties optional if their type is just undefined or null
- */
-type omitNullish<T> =
-  | T
-  | {
-    [K in keyof T as T[K] extends undefined | null ? never : K]: T[K];
-  };
-
-/**
- * If whole object is optional, allow it to be nullish
- */
-type optionalIfEmpty<T> = {
-  [K in keyof T]: T[K];
-} extends { [K in keyof T]?: T[K] } ? T | null | undefined | void
-  : T;
