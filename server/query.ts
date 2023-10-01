@@ -1,5 +1,5 @@
 /**
- * Used to validate the query string.
+ * Validates a query string against a query string schema.
  *
  * @internal
  */

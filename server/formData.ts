@@ -1,7 +1,7 @@
 import { JsonSchema, jsonType, validateJson } from "./json.ts";
 
 /**
- * Used to validate the form data body.
+ * Validates form data against a form data schema.
  *
  * @internal
  */
@@ -58,10 +58,16 @@ export async function validateFormData<T extends FormDataSchema>(
         }
         switch (paramSchema.type) {
           case "application/json": {
-            result[key] = validateJson(
-              paramSchema.schema,
-              JSON.parse(await paramValue.text()),
-            );
+            try {
+              result[key] = validateJson(
+                paramSchema.schema,
+                JSON.parse(await paramValue.text()),
+              );
+            } catch (error) {
+              throw new Error(
+                `Invalid JSON in ${key}: ${error.message}`,
+              );
+            }
             break;
           }
           case "application/octet-stream": {

@@ -1,3 +1,8 @@
+/**
+ * Validates a JSON value against a JSON schema.
+ *
+ * @internal
+ */
 export function validateJson<T extends JsonSchema>(
   schema: T,
   value: unknown,
@@ -42,9 +47,19 @@ export function validateJson<T extends JsonSchema>(
       }
       const result: Record<string, unknown> = {};
       for (const key in schema.properties) {
+        const propertySchema = schema.properties[key];
+        const propertyValue = (value as Record<string, unknown>)[key];
+        if (propertyValue == null) {
+          if (schema.required?.includes(key)) {
+            throw new Error(
+              `Missing required property ${[...path, key].join(".")}`,
+            );
+          }
+          continue;
+        }
         result[key] = validateJson(
-          schema.properties[key],
-          (value as any)[key],
+          propertySchema,
+          propertyValue,
           [...path, key],
         );
       }
@@ -56,22 +71,55 @@ export function validateJson<T extends JsonSchema>(
   }
 }
 
+/**
+ * JSON schema.
+ */
 export type JsonSchema =
   | { type: "string" }
   | { type: "number" }
   | { type: "integer" }
   | { type: "boolean" }
-  | { type: "array"; items: JsonSchema }
-  | { type: "object"; properties: { [key: string]: JsonSchema } };
+  | {
+    type: "array";
+    items: JsonSchema;
+  }
+  | {
+    type: "object";
+    properties: { [key: string]: JsonSchema };
+    required?: readonly string[];
+  };
 
+/**
+ * Returns the type of a JSON value based on its schema.
+ *
+ * @template T The {@link JsonSchema}.
+ */
 export type jsonType<T extends JsonSchema> = T extends { type: "string" }
   ? string
   : T extends { type: "number" } ? number
   : T extends { type: "integer" } ? number
   : T extends { type: "boolean" } ? boolean
-  : T extends { type: "array"; items: infer I extends JsonSchema }
-    ? jsonType<I>[]
-  : T extends { type: "object"; properties: infer P } ? {
-      [K in keyof P]: P[K] extends JsonSchema ? jsonType<P[K]> : never;
-    }
+  : T extends { type: "array"; items: infer I extends JsonSchema } ? (
+      jsonType<I>[]
+    )
+  : T extends {
+    type: "object";
+    properties: infer P extends { [key: string]: JsonSchema };
+  } ? (
+      T extends { required: infer R extends readonly unknown[] } ? (
+          & {
+            [K in keyof P as K extends R[number] ? K : never]: jsonType<P[K]>;
+          }
+          & {
+            [K in keyof P as K extends R[number] ? never : K]?:
+              | jsonType<P[K]>
+              | undefined;
+          }
+        )
+        : (
+          {
+            [K in keyof P]?: jsonType<P[K]> | undefined;
+          }
+        )
+    )
   : never;

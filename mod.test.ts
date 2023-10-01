@@ -279,7 +279,7 @@ Deno.test("request with body", async () => {
           },
         },
         async ({ body }) => {
-          assertType<{ name: string }>(body);
+          assertType<{ name?: string }>(body);
           return {
             status: 200,
             type: "text/plain",
@@ -319,11 +319,12 @@ Deno.test("request with body", async () => {
           },
         },
         async ({ body }) => {
-          assertType<{ name: string }>(body);
+          assertType<{ name?: string }>(body);
           return {
             status: 200,
             type: "application/json",
-            body: ["Hello", body.name, "!"],
+            // TODO: undefined values in JSON become null but are still undefined in types
+            body: ["Hello", body.name ?? null, "!"],
           };
         },
       ),
@@ -349,6 +350,13 @@ Deno.test("request with body", async () => {
       body: { name: "world" },
     }),
     { status: 200, type: "application/json", body: ["Hello", "world", "!"] },
+  );
+  assertEquals(
+    await client.fetch("hello", "PUT", {
+      type: "application/json",
+      body: {},
+    }),
+    { status: 200, type: "application/json", body: ["Hello", null, "!"] },
   );
   assertEquals(
     // @ts-expect-error - invalid method
@@ -492,6 +500,7 @@ Deno.test("form data request", async () => {
                   properties: {
                     tags: { type: "array", items: { type: "string" } },
                   },
+                  required: ["tags"],
                 },
               },
               photo: { kind: "file", type: "application/octet-stream" },
@@ -544,6 +553,24 @@ Deno.test("form data request", async () => {
         photoSize: 1024,
         tagsCount: 2,
       },
+    },
+  );
+  assertEquals(
+    await client.fetch("", "POST", {
+      type: "multipart/form-data",
+      body: {
+        name: "John",
+        age: 42,
+        // @ts-expect-error - param tags is required
+        metadata: {},
+        photo: new File([new Uint8Array(1024)], "photo.jpg"),
+      },
+    }),
+    {
+      status: 400,
+      type: "text/plain",
+      body:
+        "Bad request: Invalid body: Invalid form data: Invalid JSON in metadata: Missing required property tags",
     },
   );
   controller.abort();
