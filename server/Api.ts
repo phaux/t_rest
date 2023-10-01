@@ -4,34 +4,42 @@ import { QuerySchema } from "./query.ts";
 import { BodySchema } from "./body.ts";
 
 /**
- * TREST API.
+ * Api definition.
+ *
+ * Used to define an API and its endpoints.
+ * Can also be used to define a nested API.
+ *
+ * Provided route map will be used to match incoming requests
+ * and invoke the corresponding {@link Endpoint}.
+ *
+ * @example
+ * ```ts
+ * const api = new Api({
+ *   "hello": {
+ *     GET: new Endpoint(
+ *       { query: { name: { type: "string" } }, body: null },
+ *       async ({ query }) => {
+ *         return { status: 200, type: "text/plain", body: `Hello ${query.name}` };
+ *       },
+ *     ),
+ *   },
+ * });
+ * ```
+ *
+ * @template A The {@link RouteMap} object containing route definitions.
  */
 export class Api<
   const A extends RouteMap,
 > {
   /**
-   * Initialize a new API.
-   *
-   * @example
-   * ```ts
-   * const api = new Api({
-   *   "hello": {
-   *     GET: new Endpoint(
-   *       { query: { name: { type: "string" } }, body: null },
-   *       async ({ query }) => {
-   *         return { status: 200, type: "text/plain", body: `Hello ${query.name}` };
-   *       },
-   *     ),
-   *   },
-   * });
-   * ```
+   * Defines an Api.
    */
   constructor(
     readonly api: A,
   ) {}
 
   /**
-   * Handle a standard {@link Request} and return a {@link Response} based on provided API definition.
+   * Handles a standard {@link Request} and return a {@link Response} based on provided API definition.
    *
    * @example
    * ```ts

@@ -1,6 +1,6 @@
 # Typed REST
 
-[![deno doc](https://doc.deno.land/badge.svg)](https://deno.land/x/t_rest/mod.ts)
+[![deno doc](https://doc.deno.land/badge.svg)](https://deno.land/x/t_rest?doc)
 
 Library inspired by tRPC for REST APIs.
 
@@ -9,7 +9,8 @@ Library inspired by tRPC for REST APIs.
 `server.ts`:
 
 ```ts
-import { Api, Endpoint } from "https://deno.land/x/t_rest/server/mod.ts";
+import { Api } from "https://deno.land/x/t_rest/server/Api.ts";
+import { Endpoint } from "https://deno.land/x/t_rest/server/Endpoint.ts";
 
 const myApi = new Api({
   "hello": {
@@ -37,7 +38,7 @@ export type MyApi = typeof api;
 `client.ts`:
 
 ```ts
-import { Client } from "https://deno.land/x/t_rest/client/mod.ts";
+import { Client } from "https://deno.land/x/t_rest/client/Client.ts";
 import { type MyApi } from "./server.ts";
 
 const client = new Client<MyApi>("http://localhost:8080");

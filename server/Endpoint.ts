@@ -3,6 +3,43 @@ import { BodySchema, bodyType, validateBody } from "./body.ts";
 
 /**
  * A single endpoint of an {@link Api}.
+ *
+ * Provided schema will be used to validate incoming requests and to infer the input type of the handler.
+ *
+ * Provided handler will be run when a request matches and must return a valid {@link ApiResponse}.
+ *
+ * @example
+ * ```ts
+ * const api = new Api({
+ *   "hello": {
+ *     GET: new Endpoint(
+ *       {
+ *         query: { name: { type: "string" } },
+ *         body: {
+ *           type: "application/json",
+ *           schema: {
+ *             type: "object",
+ *             properties: {
+ *               age: { type: "number" },
+ *             },
+ *           },
+ *         },
+ *       },
+ *       async ({ query, body }) => {
+ *         return {
+ *           status: 200,
+ *           type: "text/plain",
+ *           body: `Hello ${query.name}, you are ${body.age} years old`,
+ *         };
+ *       },
+ *     ),
+ *   },
+ * });
+ * ```
+ *
+ * @template Q The {@link QuerySchema} of the endpoint.
+ * @template B The {@link BodySchema} of the endpoint.
+ * @template R The {@link ApiResponse} of the endpoint.
  */
 export class Endpoint<
   const Q extends QuerySchema | undefined | null,
@@ -15,40 +52,7 @@ export class Endpoint<
   }) => Promise<R>;
 
   /**
-   * Defines a new endpoint.
-   *
-   * Provided schema will be used to validate incoming requests and to infer the input type of the handler.
-   *
-   * Provided handler will be run when a request matches and must return a valid {@link ApiResponse}.
-   *
-   * @example
-   * ```ts
-   * const api = new Api({
-   *   "hello": {
-   *     GET: new Endpoint(
-   *       {
-   *         query: { name: { type: "string" } },
-   *         body: {
-   *           type: "application/json",
-   *           schema: {
-   *             type: "object",
-   *             properties: {
-   *               age: { type: "number" },
-   *             },
-   *           },
-   *         },
-   *       },
-   *       async ({ query, body }) => {
-   *         return {
-   *           status: 200,
-   *           type: "text/plain",
-   *           body: `Hello ${query.name}, you are ${body.age} years old`,
-   *         };
-   *       },
-   *     ),
-   *   },
-   * });
-   * ```
+   * Defines an endpoint.
    */
   constructor(
     readonly schema: { query: Q; body: B },
@@ -63,7 +67,7 @@ export class Endpoint<
   }
 
   /**
-   * Handle a standard {@link Request} and return a {@link Response} based on provided endpoint definition.
+   * Handles a standard {@link Request} and return a {@link Response} based on provided endpoint definition.
    *
    * This is used internally by {@link Api} but can also be used directly.
    *

@@ -5,7 +5,9 @@ import type { BodySchema, bodyType } from "../server/body.ts";
 import type { QuerySchema, queryType } from "../server/query.ts";
 
 /**
- * Client for TREST API.
+ * Client for an {@link Api}.
+ *
+ * Pass `typeof yourApi` as the type parameter to infer all the Api types.
  *
  * @template A The API type.
  */
@@ -13,14 +15,14 @@ export class Client<
   const A extends Api<RouteMap>,
 > {
   /**
-   * Initialize a new client.
+   * Initializes a new client.
    */
   constructor(
     readonly baseUrl: string,
   ) {}
 
   /**
-   * Fetch the given endpoint from the API.
+   * Fetches the given endpoint from the API.
    */
   async fetch<
     const P extends apiPath<A["api"]>,
@@ -114,7 +116,7 @@ export type apiPath<
 }[keyof A & string];
 
 /**
- * Returns all valid HTTP methods for a given path.
+ * Returns all valid HTTP methods for a given {@link Api} and a path.
  *
  * @template A The API type.
  * @template P The request path.
@@ -133,7 +135,7 @@ export type pathMethods<
   : never;
 
 /**
- * Returns the request input type for a given path and HTTP method.
+ * Returns the request input type for a given {@link Api}, path and HTTP method.
  *
  * @template A The API type.
  * @template P The request path.
@@ -154,13 +156,12 @@ export type pathInput<
   : never;
 
 /**
- * Returns the response output type for a given path and HTTP method.
+ * Returns the response output type for a given {@link Api}, path and HTTP method.
  *
- * The 500 response is always a valid response
+ * The 500 response is always valid
  * because it is used when an exception is thrown in the handler.
- *
- * Similarly, the 400 response is always a valid response
- * because some invalid requests can be represented in the type system (e.g. integer).
+ * Similarly, the 400 response is always possible
+ * because some invalid requests can't be prevented by the type system (e.g. integer).
  *
  * @template A The API type.
  * @template P The request path.
