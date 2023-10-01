@@ -2,16 +2,16 @@
 
 [![deno doc](https://doc.deno.land/badge.svg)](https://deno.land/x/trest/mod.ts)
 
-Library inspired by [tRPC](https://trpc.io/) for REST APIs.
+Library inspired by tRPC for REST APIs.
 
 ## Example
 
-Server:
+`server.ts`:
 
 ```ts
 import { Api, Endpoint } from "https://deno.land/x/trest/server/mod.ts";
 
-const api = new Api({
+const myApi = new Api({
   "hello": {
     GET: new Endpoint(
       {
@@ -28,14 +28,19 @@ const api = new Api({
     ),
   },
 });
+
+Deno.serve({ port: 8000 }, myApi.serve);
+
+export type MyApi = typeof api;
 ```
 
-Client:
+`client.ts`:
 
 ```ts
 import { Client } from "https://deno.land/x/trest/client/mod.ts";
+import { type MyApi } from "./server.ts";
 
-const client = new Client("http://localhost:8080");
+const client = new Client<MyApi>("http://localhost:8080");
 
 const response = await client.fetch("hello", "GET", {
   query: { name: "world" },
