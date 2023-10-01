@@ -1,5 +1,10 @@
 import { JsonSchema, jsonType, validateJson } from "./json.ts";
 
+/**
+ * Used to validate the form data body.
+ *
+ * @internal
+ */
 export async function validateFormData<T extends FormDataSchema>(
   schema: T,
   value: FormData,
@@ -78,6 +83,9 @@ export async function validateFormData<T extends FormDataSchema>(
   return result as formDataType<T>;
 }
 
+/**
+ * Form data schema.
+ */
 export type FormDataSchema = {
   [key: string]:
     | { kind: "value"; type: "string" | "number" | "integer" }
@@ -85,6 +93,11 @@ export type FormDataSchema = {
     | { kind: "file"; type: "application/octet-stream" };
 };
 
+/**
+ * Returns the type of form data based on its schema.
+ *
+ * @template T The {@link FormDataSchema}.
+ */
 export type formDataType<T extends FormDataSchema> = {
   [K in keyof T]: T[K] extends { kind: "value"; type: "string" } ? string
     : T[K] extends { kind: "value"; type: "number" } ? number

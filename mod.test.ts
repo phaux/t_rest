@@ -1,6 +1,8 @@
+// deno-lint-ignore-file require-await
+
 import { assertEquals } from "https://deno.land/std@0.195.0/assert/assert_equals.ts";
 import { delay } from "https://deno.land/std@0.203.0/async/delay.ts";
-import { Client } from "./client/Client.ts";
+import { Client } from "./client/mod.ts";
 import { Api } from "./server/Api.ts";
 import { Endpoint } from "./server/Endpoint.ts";
 
@@ -11,32 +13,32 @@ Deno.test("simple request", async () => {
     "": {
       GET: new Endpoint(
         { body: undefined, query: undefined },
-        () => ({ status: 200, type: "text/plain", body: "Welcome" }),
+        async () => ({ status: 200, type: "text/plain", body: "Welcome" }),
       ),
     },
     "hello": {
       GET: new Endpoint(
         { body: undefined, query: { name: { type: "string" } } },
-        ({ query }) => {
+        async ({ query }) => {
           assertType<{ name: string }>(query);
-          return ({
+          return {
             status: 200,
             type: "text/plain",
             body: `Hello ${query.name}`,
-          });
+          };
         },
       ),
     },
     "age": {
       POST: new Endpoint(
         { body: null, query: { age: { type: "number" } } },
-        ({ query }) => {
+        async ({ query }) => {
           assertType<{ age: number }>(query);
-          return ({
+          return {
             status: 201,
             type: "application/json",
             body: { message: `You are ${query.age} years old` },
-          });
+          };
         },
       ),
     },
@@ -133,7 +135,7 @@ Deno.test("subapi request", async () => {
     "say/hello": {
       GET: new Endpoint(
         { query: { name: { type: "string" } }, body: null },
-        ({ query }) => {
+        async ({ query }) => {
           assertType<{ name: string }>(query);
           return {
             status: 200,
@@ -147,7 +149,7 @@ Deno.test("subapi request", async () => {
       "": {
         GET: new Endpoint(
           { query: null, body: null },
-          () => ({
+          async () => ({
             status: 200,
             type: "text/plain",
             body: "Welcome to sub API",
@@ -157,7 +159,7 @@ Deno.test("subapi request", async () => {
       "age": {
         POST: new Endpoint(
           { query: { age: { type: "integer" } }, body: null },
-          ({ query }) => {
+          async ({ query }) => {
             assertType<{ age: number }>(query);
             return {
               status: 200,
@@ -262,7 +264,7 @@ Deno.test("request with body", async () => {
             },
           },
         },
-        () => ({ status: 200, type: "text/plain", body: "Hello" }),
+        async () => ({ status: 200, type: "text/plain", body: "Hello" }),
       ),
       // @ts-expect-error - DELETE can't have a body
       DELETE: new Endpoint(
@@ -276,7 +278,7 @@ Deno.test("request with body", async () => {
             },
           },
         },
-        ({ body }) => {
+        async ({ body }) => {
           assertType<{ name: string }>(body);
           return {
             status: 200,
@@ -296,9 +298,13 @@ Deno.test("request with body", async () => {
             type: "text/plain",
           },
         },
-        ({ body }) => {
+        async ({ body }) => {
           assertType<string>(body);
-          return { status: 201, type: "text/plain", body: `Hello ${body}` };
+          return {
+            status: 201,
+            type: "text/plain",
+            body: `Hello ${body}`,
+          };
         },
       ),
       PUT: new Endpoint(
@@ -312,7 +318,7 @@ Deno.test("request with body", async () => {
             },
           },
         },
-        ({ body }) => {
+        async ({ body }) => {
           assertType<{ name: string }>(body);
           return {
             status: 200,
@@ -378,7 +384,7 @@ Deno.test("on exception receives 500", async () => {
     "": {
       GET: new Endpoint(
         { body: null, query: null },
-        () => {
+        async () => {
           throw new Error("oops");
         },
       ),
@@ -420,7 +426,7 @@ Deno.test("can return custom error", async () => {
           },
           query: null,
         },
-        ({ body }) => {
+        async ({ body }) => {
           if (body.username === "admin" && body.password === "admin") {
             return {
               status: 200,
@@ -493,7 +499,7 @@ Deno.test("form data request", async () => {
           },
           query: null,
         },
-        ({ body }) => {
+        async ({ body }) => {
           assertType<string>(body.name);
           assertType<number>(body.age);
           assertType<Blob>(body.photo);

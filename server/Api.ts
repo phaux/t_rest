@@ -3,13 +3,42 @@ import { Endpoint } from "./Endpoint.ts";
 import { QuerySchema } from "./query.ts";
 import { BodySchema } from "./body.ts";
 
+/**
+ * TREST API.
+ */
 export class Api<
   const A extends RouteMap,
 > {
+  /**
+   * Initialize a new API.
+   *
+   * @example
+   * ```ts
+   * const api = new Api({
+   *   "hello": {
+   *     GET: new Endpoint(
+   *       { query: { name: { type: "string" } }, body: null },
+   *       async ({ query }) => {
+   *         return { status: 200, type: "text/plain", body: `Hello ${query.name}` };
+   *       },
+   *     ),
+   *   },
+   * });
+   * ```
+   */
   constructor(
     readonly api: A,
   ) {}
 
+  /**
+   * Handle a standard {@link Request} and return a {@link Response} based on provided API definition.
+   *
+   * @example
+   * ```ts
+   * const api = new Api({});
+   * Deno.serve(api.serve);
+   * ```
+   */
   serve = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -44,10 +73,16 @@ export class Api<
   };
 }
 
+/**
+ * Map of API paths to {@link Route} or a nested {@link Api}.
+ */
 export type RouteMap = {
   [path: string]: Route | Api<RouteMap>;
 };
 
+/**
+ * A single API route. It's a map of HTTP methods to {@link Endpoint}.
+ */
 export type Route = {
   GET?: Endpoint<
     QuerySchema | undefined | null,
@@ -71,4 +106,7 @@ export type Route = {
   >;
 };
 
+/**
+ * Any supported HTTP method.
+ */
 export type Method = keyof Route;

@@ -1,6 +1,9 @@
 import { QuerySchema, queryType, validateQuery } from "./query.ts";
 import { BodySchema, bodyType, validateBody } from "./body.ts";
 
+/**
+ * A single endpoint of an {@link Api}.
+ */
 export class Endpoint<
   const Q extends QuerySchema | undefined | null,
   const B extends BodySchema | undefined | null,
@@ -9,8 +12,44 @@ export class Endpoint<
   #handler: (input: {
     query: unknown;
     body: unknown;
-  }) => R;
+  }) => Promise<R>;
 
+  /**
+   * Defines a new endpoint.
+   *
+   * Provided schema will be used to validate incoming requests and to infer the input type of the handler.
+   *
+   * Provided handler will be run when a request matches and must return a valid {@link ApiResponse}.
+   *
+   * @example
+   * ```ts
+   * const api = new Api({
+   *   "hello": {
+   *     GET: new Endpoint(
+   *       {
+   *         query: { name: { type: "string" } },
+   *         body: {
+   *           type: "application/json",
+   *           schema: {
+   *             type: "object",
+   *             properties: {
+   *               age: { type: "number" },
+   *             },
+   *           },
+   *         },
+   *       },
+   *       async ({ query, body }) => {
+   *         return {
+   *           status: 200,
+   *           type: "text/plain",
+   *           body: `Hello ${query.name}, you are ${body.age} years old`,
+   *         };
+   *       },
+   *     ),
+   *   },
+   * });
+   * ```
+   */
   constructor(
     readonly schema: { query: Q; body: B },
     handler: (
@@ -18,11 +57,18 @@ export class Endpoint<
         query: Q extends object ? queryType<Q> : undefined | null;
         body: B extends object ? bodyType<B> : undefined | null;
       },
-    ) => R,
+    ) => Promise<R>,
   ) {
     this.#handler = handler as any;
   }
 
+  /**
+   * Handle a standard {@link Request} and return a {@link Response} based on provided endpoint definition.
+   *
+   * This is used internally by {@link Api} but can also be used directly.
+   *
+   * @internal
+   */
   handle = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
 
@@ -48,7 +94,7 @@ export class Endpoint<
       }
     }
 
-    const response = this.#handler({
+    const response = await this.#handler({
       query: requestQuery,
       body: requestBody,
     });
@@ -72,6 +118,9 @@ export class Endpoint<
   };
 }
 
+/**
+ * Response returned by an {@link Endpoint}'s handler.
+ */
 export type ApiResponse =
   & { status: number }
   & (

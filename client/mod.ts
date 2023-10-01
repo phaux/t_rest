@@ -4,13 +4,24 @@ import type { ApiResponse, Endpoint } from "../server/Endpoint.ts";
 import type { BodySchema, bodyType } from "../server/body.ts";
 import type { QuerySchema, queryType } from "../server/query.ts";
 
+/**
+ * Client for TREST API.
+ *
+ * @template A The API type.
+ */
 export class Client<
   const A extends Api<RouteMap>,
 > {
+  /**
+   * Initialize a new client.
+   */
   constructor(
     readonly baseUrl: string,
   ) {}
 
+  /**
+   * Fetch the given endpoint from the API.
+   */
   async fetch<
     const P extends apiPath<A["api"]>,
     const M extends keyof pathMethods<A["api"], P> & string,
@@ -89,7 +100,12 @@ export class Client<
   }
 }
 
-type apiPath<
+/**
+ * Returns all valid request paths for an {@link Api}.
+ *
+ * @template A The API type.
+ */
+export type apiPath<
   A extends RouteMap,
 > = {
   [K in keyof A & string]: A[K] extends Api<infer B> ? `${K}/${apiPath<B>}`
@@ -97,7 +113,13 @@ type apiPath<
     : never;
 }[keyof A & string];
 
-type pathMethods<
+/**
+ * Returns all valid HTTP methods for a given path.
+ *
+ * @template A The API type.
+ * @template P The request path.
+ */
+export type pathMethods<
   A extends RouteMap,
   P extends string,
 > = P extends keyof A & string ? ({
@@ -110,7 +132,14 @@ type pathMethods<
     ? (A[K] extends Api<infer B> ? pathMethods<B, R> : never)
   : never;
 
-type pathInput<
+/**
+ * Returns the request input type for a given path and HTTP method.
+ *
+ * @template A The API type.
+ * @template P The request path.
+ * @template M The HTTP method.
+ */
+export type pathInput<
   A extends RouteMap,
   P extends string,
   M extends keyof pathMethods<A, P>,
@@ -124,7 +153,20 @@ type pathInput<
       : { type?: undefined | null; body?: undefined | null } | undefined | null)
   : never;
 
-type pathOutput<
+/**
+ * Returns the response output type for a given path and HTTP method.
+ *
+ * The 500 response is always a valid response
+ * because it is used when an exception is thrown in the handler.
+ *
+ * Similarly, the 400 response is always a valid response
+ * because some invalid requests can be represented in the type system (e.g. integer).
+ *
+ * @template A The API type.
+ * @template P The request path.
+ * @template M The HTTP method.
+ */
+export type pathOutput<
   A extends RouteMap,
   P extends string,
   M extends keyof pathMethods<A, P>,
@@ -134,6 +176,5 @@ type pathOutput<
   infer R extends ApiResponse
 > ?
     | R
-    | { status: 400; type: "text/plain"; body: string }
-    | { status: 500; type: "text/plain"; body: string }
+    | (ApiResponse & { status: 400 | 500; type: "text/plain" })
   : never;

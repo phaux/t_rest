@@ -1,3 +1,8 @@
+/**
+ * Used to validate the query string.
+ *
+ * @internal
+ */
 export function validateQuery<T extends QuerySchema>(
   schema: T,
   value: URLSearchParams,
@@ -38,12 +43,20 @@ export function validateQuery<T extends QuerySchema>(
   return result as queryType<T>;
 }
 
+/**
+ * Query string schema.
+ */
 export type QuerySchema = {
   [key: string]: {
     type: "string" | "number" | "integer";
   };
 };
 
+/**
+ * Returns the type of a query string data based on its schema.
+ *
+ * @template T The {@link QuerySchema}.
+ */
 export type queryType<T extends QuerySchema> = {
   [K in keyof T]: T[K]["type"] extends "string" ? string
     : T[K]["type"] extends "number" ? number
