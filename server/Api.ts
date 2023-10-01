@@ -1,6 +1,6 @@
 import { escape } from "https://deno.land/std@0.203.0/regexp/escape.ts";
-import { BodySchema, Route } from "./Route.ts";
-import { QuerySchema } from "./validateQuery.ts";
+import { Endpoint } from "./Endpoint.ts";
+import { QuerySchema } from "./query.ts";
 
 export class Api<
   const A extends RouteMap,
@@ -44,15 +44,15 @@ export class Api<
 }
 
 export type RouteMap = {
-  [path: string]: Endpoint | Api<any>;
+  [path: string]: Route | Api<any>;
 };
 
-export type Endpoint = {
-  GET?: Route<QuerySchema, void>;
-  POST?: Route<QuerySchema, BodySchema>;
-  PUT?: Route<QuerySchema, BodySchema>;
-  PATCH?: Route<QuerySchema, BodySchema>;
-  DELETE?: Route<QuerySchema, void>;
+export type Route = {
+  GET?: Endpoint<QuerySchema, undefined | null>;
+  POST?: Endpoint;
+  PUT?: Endpoint;
+  PATCH?: Endpoint;
+  DELETE?: Endpoint<QuerySchema, undefined | null>;
 };
 
-export type Method = keyof Endpoint;
+export type Method = keyof Route;

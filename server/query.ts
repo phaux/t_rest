@@ -2,6 +2,9 @@ export function validateQuery<T extends QuerySchema>(
   schema: T,
   value: URLSearchParams,
 ): queryType<T> {
+  if (schema == null) {
+    return undefined as queryType<T>;
+  }
   const result: Record<string, unknown> = {};
   for (const key in schema) {
     const paramSchema = schema[key];
@@ -30,15 +33,16 @@ export function validateQuery<T extends QuerySchema>(
   return result as queryType<T>;
 }
 
-export type QuerySchema = {
+export type QuerySchema = undefined | null | {
   [key: string]: {
     type: "string" | "number" | "integer";
   };
 };
 
-export type queryType<T extends QuerySchema> = {
-  [K in keyof T]: T[K]["type"] extends "string" ? string
-    : T[K]["type"] extends "number" ? number
-    : T[K]["type"] extends "integer" ? number
-    : never;
-};
+export type queryType<T extends QuerySchema> = T extends object ? {
+    [K in keyof T]: T[K]["type"] extends "string" ? string
+      : T[K]["type"] extends "number" ? number
+      : T[K]["type"] extends "integer" ? number
+      : never;
+  }
+  : undefined;

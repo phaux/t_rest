@@ -1,45 +1,42 @@
 import { assertEquals } from "https://deno.land/std@0.195.0/assert/assert_equals.ts";
-import { ConsoleHandler } from "https://deno.land/std@0.201.0/log/handlers.ts";
-import { setup } from "https://deno.land/std@0.201.0/log/mod.ts";
 import { delay } from "https://deno.land/std@0.203.0/async/delay.ts";
 import { Client } from "./client/Client.ts";
-import { Route } from "./server/Route.ts";
 import { Api } from "./server/Api.ts";
+import { Endpoint } from "./server/Endpoint.ts";
 
 const assertType = <T>(_: T) => {};
-
-setup({
-  handlers: {
-    console: new ConsoleHandler("DEBUG"),
-  },
-  loggers: {
-    trest: { level: "DEBUG", handlers: ["console"] },
-  },
-});
 
 Deno.test("simple request", async () => {
   const api = new Api({
     "": {
-      GET: new Route(
-        { body: undefined, query: {} },
-        () => new Response("Welcome"),
+      GET: new Endpoint(
+        { body: undefined, query: undefined },
+        () => ({ status: 200, type: "text/plain", body: "Welcome" }),
       ),
     },
     "hello": {
-      GET: new Route(
+      GET: new Endpoint(
         { body: undefined, query: { name: { type: "string" } } },
         ({ query }) => {
           assertType<{ name: string }>(query);
-          return new Response(`Hello ${query.name}`);
+          return ({
+            status: 200,
+            type: "text/plain",
+            body: `Hello ${query.name}`,
+          });
         },
       ),
     },
     "age": {
-      POST: new Route(
-        { body: undefined, query: { age: { type: "number" } } },
+      POST: new Endpoint(
+        { body: null, query: { age: { type: "number" } } },
         ({ query }) => {
           assertType<{ age: number }>(query);
-          return new Response(`You are ${query.age} years old`);
+          return ({
+            status: 201,
+            type: "application/json",
+            body: { message: `You are ${query.age} years old` },
+          });
         },
       ),
     },
@@ -51,31 +48,58 @@ Deno.test("simple request", async () => {
   );
   const client = new Client<typeof api>("http://localhost:8123");
   await delay(100);
-  assertEquals(
-    await client.fetch("", "GET", { body: undefined, query: {} }),
-    "Welcome",
-  );
-  assertEquals(
-    await client.fetch("hello", "GET", {
+  {
+    const rootResp = await client.fetch("", "GET", {
+      body: undefined,
+      query: undefined,
+    });
+    assertType<200 | 400 | 500>(rootResp.status);
+    assertType<string>(rootResp.body);
+    assertEquals(rootResp, {
+      status: 200,
+      type: "text/plain",
+      body: "Welcome",
+    });
+  }
+  {
+    const helloResp = await client.fetch("hello", "GET", {
       body: undefined,
       query: { name: "world" },
-    }),
-    "Hello world",
-  );
-  assertEquals(
-    await client.fetch("age", "POST", {
-      body: undefined,
+    });
+    assertType<200 | 400 | 500>(helloResp.status);
+    assertType<string>(helloResp.body);
+    assertEquals(
+      helloResp,
+      { status: 200, type: "text/plain", body: "Hello world" },
+    );
+  }
+  {
+    const ageResp = await client.fetch("age", "POST", {
       query: { age: 42 },
-    }),
-    "You are 42 years old",
-  );
+    });
+    assertType<201 | 400 | 500>(ageResp.status);
+    if (ageResp.status === 201) {
+      assertType<{ message: string }>(ageResp.body);
+    }
+    assertEquals(
+      ageResp,
+      {
+        status: 201,
+        type: "application/json",
+        body: { message: "You are 42 years old" },
+      },
+    );
+  }
   assertEquals(
     // @ts-expect-error - invalid path
     await client.fetch("hellooo", "GET", {
-      body: undefined,
       query: { name: "world" },
     }),
-    "Not found",
+    {
+      status: 404,
+      type: "text/plain",
+      body: "Not found",
+    } as never,
   );
   assertEquals(
     // @ts-expect-error - invalid method
@@ -83,15 +107,22 @@ Deno.test("simple request", async () => {
       body: undefined,
       query: { age: 42 },
     }),
-    "Method not allowed",
+    {
+      status: 405,
+      type: "text/plain",
+      body: "Method not allowed",
+    } as never,
   );
   assertEquals(
     await client.fetch("age", "POST", {
-      body: undefined,
       // @ts-expect-error - invalid param type
       query: { age: "old" },
     }),
-    "Bad request: Invalid query: Expected age to be a number",
+    {
+      status: 400,
+      type: "text/plain",
+      body: "Bad request: Invalid query: Expected age to be a number",
+    } as never,
   );
   controller.abort();
   await server.finished;
@@ -100,27 +131,39 @@ Deno.test("simple request", async () => {
 Deno.test("subapi request", async () => {
   const api = new Api({
     "say/hello": {
-      GET: new Route(
-        { query: { name: { type: "string" } }, body: undefined },
+      GET: new Endpoint(
+        { query: { name: { type: "string" } }, body: null },
         ({ query }) => {
           assertType<{ name: string }>(query);
-          return new Response(`Hello ${query.name}`);
+          return {
+            status: 200,
+            type: "text/plain",
+            body: `Hello ${query.name}`,
+          };
         },
       ),
     },
     "subapi": new Api({
       "": {
-        GET: new Route(
-          { query: {}, body: undefined },
-          () => new Response("Welcome to sub API"),
+        GET: new Endpoint(
+          { query: null, body: null },
+          () => ({
+            status: 200,
+            type: "text/plain",
+            body: "Welcome to sub API",
+          }),
         ),
       },
       "age": {
-        POST: new Route(
-          { query: { age: { type: "integer" } }, body: undefined },
+        POST: new Endpoint(
+          { query: { age: { type: "integer" } }, body: null },
           ({ query }) => {
             assertType<{ age: number }>(query);
-            return new Response(`You are ${query.age} years old`);
+            return {
+              status: 200,
+              type: "application/json",
+              body: `You are ${query.age} years old`,
+            };
           },
         ),
       },
@@ -134,61 +177,70 @@ Deno.test("subapi request", async () => {
   const client = new Client<typeof api>("http://localhost:8125");
   await delay(100);
   assertEquals(
-    await client.fetch("subapi/", "GET", { query: {}, body: undefined }),
-    "Welcome to sub API",
+    await client.fetch("subapi/", "GET", {}),
+    { status: 200, type: "text/plain", body: "Welcome to sub API" },
   );
   assertEquals(
     await client.fetch("say/hello", "GET", {
       query: { name: "world" },
-      body: undefined,
     }),
-    "Hello world",
+    { status: 200, type: "text/plain", body: "Hello world" },
   );
   assertEquals(
     await client.fetch("subapi/age", "POST", {
       query: { age: 42 },
-      body: undefined,
     }),
-    "You are 42 years old",
+    { status: 200, type: "application/json", body: "You are 42 years old" },
   );
   assertEquals(
     await client.fetch("subapi/age", "POST", {
       query: { age: Infinity },
-      body: undefined,
     }),
-    "Bad request: Invalid query: Expected age to be an integer",
+    {
+      status: 400,
+      type: "text/plain",
+      body: "Bad request: Invalid query: Expected age to be an integer",
+    },
   );
   assertEquals(
     await client.fetch("subapi/age", "POST", {
       // @ts-expect-error - missing param
       query: { name: "world" },
-      body: undefined,
     }),
-    "Bad request: Invalid query: Missing param age",
+    {
+      status: 400,
+      type: "text/plain",
+      body: "Bad request: Invalid query: Missing param age",
+    } as never,
   );
   assertEquals(
     // @ts-expect-error - invalid path
     await client.fetch("subapi/name", "GET", {
       query: { name: "world" },
-      body: undefined,
     }),
-    "Not found",
+    {
+      status: 404,
+      type: "text/plain",
+      body: "Not found",
+    } as never,
   );
   assertEquals(
     // @ts-expect-error - invalid path
-    await client.fetch("say/hello/subpath", "PUT", {
-      query: {},
-      body: undefined,
-    }),
-    "Not found",
+    await client.fetch("say/hello/subpath", "PUT", null),
+    {
+      status: 404,
+      type: "text/plain",
+      body: "Not found",
+    } as never,
   );
   assertEquals(
     // @ts-expect-error - invalid path
-    await client.fetch("subapi/age/subpath", "PATCH", {
-      query: {},
-      body: undefined,
-    }),
-    "Not found",
+    await client.fetch("subapi/age/subpath", "PATCH", undefined),
+    {
+      status: 404,
+      type: "text/plain",
+      body: "Not found",
+    } as never,
   );
 
   controller.abort();
@@ -199,25 +251,25 @@ Deno.test("request with body", async () => {
   const _badApi = new Api({
     "hello": {
       // @ts-expect-error - GET can't have a body
-      GET: new Route(
+      GET: new Endpoint(
         {
-          query: {},
+          query: undefined,
           body: {
-            type: "json",
+            type: "application/json",
             schema: {
               type: "object",
               properties: {},
             },
           },
         },
-        () => new Response("Hello"),
+        () => ({ status: 200, type: "text/plain", body: "Hello" }),
       ),
       // @ts-expect-error - DELETE can't have a body
-      DELETE: new Route(
+      DELETE: new Endpoint(
         {
-          query: {},
+          query: undefined,
           body: {
-            type: "json",
+            type: "application/json",
             schema: {
               type: "object",
               properties: { name: { type: "string" } },
@@ -226,30 +278,34 @@ Deno.test("request with body", async () => {
         },
         ({ body }) => {
           assertType<{ name: string }>(body);
-          return new Response(`Goodbye ${body.name}`);
+          return {
+            status: 200,
+            type: "text/plain",
+            body: `Goodbye ${body.name}`,
+          };
         },
       ),
     },
   });
   const api = new Api({
     "hello": {
-      POST: new Route(
+      POST: new Endpoint(
         {
-          query: {},
+          query: null,
           body: {
-            type: "string",
+            type: "text/plain",
           },
         },
         ({ body }) => {
           assertType<string>(body);
-          return new Response(`Hello ${body}`);
+          return { status: 201, type: "text/plain", body: `Hello ${body}` };
         },
       ),
-      PUT: new Route(
+      PUT: new Endpoint(
         {
-          query: {},
+          query: null,
           body: {
-            type: "json",
+            type: "application/json",
             schema: {
               type: "object",
               properties: { name: { type: "string" } },
@@ -258,7 +314,11 @@ Deno.test("request with body", async () => {
         },
         ({ body }) => {
           assertType<{ name: string }>(body);
-          return new Response(`Hello ${body.name}`);
+          return {
+            status: 200,
+            type: "application/json",
+            body: ["Hello", body.name, "!"],
+          };
         },
       ),
     },
@@ -272,34 +332,133 @@ Deno.test("request with body", async () => {
   await delay(100);
   assertEquals(
     await client.fetch("hello", "POST", {
-      query: {},
       body: "world",
     }),
-    "Hello world",
+    { status: 201, type: "text/plain", body: "Hello world" },
   );
   assertEquals(
     await client.fetch("hello", "PUT", {
-      query: {},
       body: { name: "world" },
     }),
-    "Hello world",
+    { status: 200, type: "application/json", body: ["Hello", "world", "!"] },
   );
   assertEquals(
     // @ts-expect-error - invalid method
     await client.fetch("hello", "PATCH", {
-      query: {},
       body: { name: "world" },
     }),
-    "Method not allowed",
+    {
+      status: 405,
+      type: "text/plain",
+      body: "Method not allowed",
+    } as never,
   );
   assertEquals(
     await client.fetch("hello", "PUT", {
-      query: {},
       // @ts-expect-error - invalid body
       body: { name: 123 },
     }),
-    "Bad request: Invalid body: Expected name to be a string",
+    {
+      status: 400,
+      type: "text/plain",
+      body:
+        "Bad request: Invalid body: Invalid JSON: Expected name to be a string",
+    } as never,
   );
+  controller.abort();
+  await server.finished;
+});
+
+Deno.test("on exception receives 500", async () => {
+  const api = new Api({
+    "": {
+      GET: new Endpoint(
+        { body: null, query: null },
+        () => {
+          throw new Error("oops");
+        },
+      ),
+    },
+  });
+  const controller = new AbortController();
+  const server = Deno.serve(
+    { port: 8127, signal: controller.signal },
+    api.serve,
+  );
+  const client = new Client<typeof api>("http://localhost:8127/");
+  await delay(100);
+  assertEquals(
+    await client.fetch("", "GET", {}),
+    {
+      status: 500,
+      type: "text/plain",
+      body: "Internal Server Error",
+    },
+  );
+  controller.abort();
+  await server.finished;
+});
+
+Deno.test("can return custom error", async () => {
+  const api = new Api({
+    "login": {
+      POST: new Endpoint(
+        {
+          body: {
+            type: "application/json",
+            schema: {
+              type: "object",
+              properties: {
+                username: { type: "string" },
+                password: { type: "string" },
+              },
+            },
+          },
+          query: null,
+        },
+        ({ body }) => {
+          if (body.username === "admin" && body.password === "admin") {
+            return {
+              status: 200,
+              type: "application/json",
+              body: { session: "qwerty12345" },
+            };
+          }
+          return {
+            status: 401,
+            type: "text/plain",
+            body: "Unauthorized",
+          };
+        },
+      ),
+    },
+  });
+  const controller = new AbortController();
+  const server = Deno.serve(
+    { port: 8128, signal: controller.signal },
+    api.serve,
+  );
+  const client = new Client<typeof api>("http://localhost:8128");
+  await delay(100);
+  {
+    const badLoginResp = await client.fetch("login", "POST", {
+      body: { username: "admin", password: "wrong" },
+    });
+    assertType<200 | 400 | 401 | 500>(badLoginResp.status);
+    assertType<"text/plain" | "application/json">(badLoginResp.type);
+    if (badLoginResp.status === 200) {
+      assertType<"application/json">(badLoginResp.type);
+      assertType<{ session: string }>(badLoginResp.body);
+    }
+    if (badLoginResp.status === 401) {
+      assertType<"text/plain">(badLoginResp.type);
+      assertType<string>(badLoginResp.body);
+    }
+    assertEquals(
+      badLoginResp,
+      { status: 401, type: "text/plain", body: "Unauthorized" },
+    );
+  }
   controller.abort();
   await server.finished;
 });
