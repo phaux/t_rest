@@ -12,7 +12,7 @@ import type { QuerySchema, queryType } from "../server/query.ts";
  * @template A The API type.
  */
 export class Client<
-  const A extends Api<RouteMap>,
+  A extends Api<RouteMap>,
 > {
   /**
    * Initializes a new client.
@@ -25,8 +25,8 @@ export class Client<
    * Fetches the given endpoint from the API.
    */
   async fetch<
-    const P extends apiPath<A["api"]>,
-    const M extends keyof pathMethods<A["api"], P> & string,
+    P extends apiPath<A["api"]>,
+    M extends keyof pathMethods<A["api"], P> & string,
   >(
     path: P,
     method: M,

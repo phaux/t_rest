@@ -29,7 +29,7 @@ import { BodySchema } from "./body.ts";
  * @template A The {@link RouteMap} object containing route definitions.
  */
 export class Api<
-  const A extends RouteMap,
+  A extends RouteMap,
 > {
   /**
    * Defines an Api.
