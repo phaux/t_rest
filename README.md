@@ -32,7 +32,7 @@ const myApi = new Api({
 
 Deno.serve({ port: 8000 }, myApi.serve);
 
-export type MyApi = typeof api;
+export type MyApi = typeof myApi;
 ```
 
 `client.ts`:
