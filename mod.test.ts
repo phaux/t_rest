@@ -2,9 +2,8 @@
 
 import { assertEquals } from "https://deno.land/std@0.195.0/assert/assert_equals.ts";
 import { delay } from "https://deno.land/std@0.203.0/async/delay.ts";
-import { Client } from "./client/Client.ts";
-import { Api } from "./server/Api.ts";
-import { Endpoint } from "./server/Endpoint.ts";
+import { Client } from "./client/mod.ts";
+import { Api, Endpoint } from "./server/mod.ts";
 
 const assertType = <T>(_: T) => {};
 

@@ -70,7 +70,7 @@ export class Api<
         return await route.serve(subRequest);
       }
       if (!match.groups?.rest) {
-        const endpoint = route[request.method as Method];
+        const endpoint = route[request.method as keyof Route];
         if (endpoint == null) {
           return new Response("Method not allowed", { status: 405 });
         }
@@ -113,8 +113,3 @@ export type Route = {
     undefined | null
   >;
 };
-
-/**
- * Any supported HTTP method.
- */
-export type Method = keyof Route;
