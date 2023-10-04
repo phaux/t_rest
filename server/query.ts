@@ -22,7 +22,7 @@ export function validateQuery<T extends QuerySchema>(
       case "number": {
         const value = parseFloat(paramValue);
         if (isNaN(value)) {
-          throw new Error(`Expected ${key} to be a number`);
+          throw new Error(`Expected param ${key} to be a number`);
         }
         result[key] = value;
         break;
@@ -30,7 +30,7 @@ export function validateQuery<T extends QuerySchema>(
       case "integer": {
         const number = parseInt(paramValue, 10);
         if (isNaN(number)) {
-          throw new Error(`Expected ${key} to be an integer`);
+          throw new Error(`Expected param ${key} to be an integer`);
         }
         result[key] = number;
         break;

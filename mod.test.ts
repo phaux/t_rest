@@ -122,7 +122,7 @@ Deno.test("simple request", async () => {
     {
       status: 400,
       type: "text/plain",
-      body: "Bad request: Invalid query: Expected age to be a number",
+      body: "Bad request: Invalid query: Expected param age to be a number",
     } as never,
   );
   controller.abort();
@@ -200,7 +200,7 @@ Deno.test("subapi request", async () => {
     {
       status: 400,
       type: "text/plain",
-      body: "Bad request: Invalid query: Expected age to be an integer",
+      body: "Bad request: Invalid query: Expected param age to be an integer",
     },
   );
   assertEquals(
@@ -313,17 +313,25 @@ Deno.test("request with body", async () => {
             type: "application/json",
             schema: {
               type: "object",
-              properties: { name: { type: "string" } },
+              properties: {
+                name: { type: ["string", "number"] },
+                stats: {
+                  type: ["object", "null"],
+                  additionalProperties: { type: "number" },
+                },
+              },
+              required: ["name"],
             },
           },
         },
         async ({ body }) => {
-          assertType<{ name?: string }>(body);
+          assertType<string | number>(body.name);
+          assertType<Record<string, number> | undefined | null>(body.stats);
           return {
             status: 200,
             type: "application/json",
             // TODO: undefined values in JSON become null but are still undefined in types
-            body: ["Hello", body.name ?? null, "!"],
+            body: ["Hello", body.name, "!", body.stats ?? null],
           };
         },
       ),
@@ -348,14 +356,22 @@ Deno.test("request with body", async () => {
       type: "application/json",
       body: { name: "world" },
     }),
-    { status: 200, type: "application/json", body: ["Hello", "world", "!"] },
+    {
+      status: 200,
+      type: "application/json",
+      body: ["Hello", "world", "!", null],
+    },
   );
   assertEquals(
     await client.fetch("hello", "PUT", {
       type: "application/json",
-      body: {},
+      body: { name: "world", stats: { hp: 100, mp: 50 } },
     }),
-    { status: 200, type: "application/json", body: ["Hello", null, "!"] },
+    {
+      status: 200,
+      type: "application/json",
+      body: ["Hello", "world", "!", { hp: 100, mp: 50 }],
+    },
   );
   assertEquals(
     // @ts-expect-error - invalid method
@@ -373,13 +389,13 @@ Deno.test("request with body", async () => {
     await client.fetch("hello", "PUT", {
       type: "application/json",
       // @ts-expect-error - invalid body
-      body: { name: 123 },
+      body: { name: true },
     }),
     {
       status: 400,
       type: "text/plain",
       body:
-        "Bad request: Invalid body: Invalid JSON: Expected name to be a string",
+        "Bad request: Invalid body: Invalid JSON: Expected name to be string|number but got boolean",
     } as never,
   );
   controller.abort();
@@ -569,7 +585,7 @@ Deno.test("form data request", async () => {
       status: 400,
       type: "text/plain",
       body:
-        "Bad request: Invalid body: Invalid form data: Invalid JSON in metadata: Missing required property tags",
+        "Bad request: Invalid body: Invalid form data: Invalid JSON in field metadata: Missing required property tags",
     },
   );
   controller.abort();

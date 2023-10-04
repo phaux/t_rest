@@ -8,118 +8,152 @@ export function validateJson<T extends JsonSchema>(
   value: unknown,
   path: Array<string | number> = [],
 ): jsonType<T> {
-  switch (schema.type) {
-    case "string": {
-      if (typeof value != "string") {
-        throw new Error(`Expected ${path.join(".")} to be a string`);
-      }
-      return value as jsonType<T>;
-    }
-    case "number": {
-      if (typeof value != "number") {
-        throw new Error(`Expected ${path.join(".")} to be a number`);
-      }
-      return value as jsonType<T>;
-    }
-    case "integer": {
-      if (typeof value != "number" || !Number.isInteger(value)) {
-        throw new Error(`Expected ${path.join(".")} to be an integer`);
-      }
-      return value as jsonType<T>;
-    }
-    case "boolean": {
-      if (typeof value != "boolean") {
-        throw new Error(`Expected ${path.join(".")} to be a boolean`);
-      }
-      return value as jsonType<T>;
-    }
-    case "array": {
-      if (!Array.isArray(value)) {
-        throw new Error(`Expected ${path.join(".")} to be an array`);
-      }
-      return value.map((item, index) =>
-        validateJson(schema.items, item, [...path, index])
-      ) as jsonType<T>;
-    }
-    case "object": {
-      if (typeof value != "object" || value == null) {
-        throw new Error(`Expected ${path.join(".")} to be an object`);
-      }
-      const result: Record<string, unknown> = {};
-      for (const key in schema.properties) {
-        const propertySchema = schema.properties[key];
-        const propertyValue = (value as Record<string, unknown>)[key];
-        if (propertyValue == null) {
-          if (schema.required?.includes(key)) {
-            throw new Error(
-              `Missing required property ${[...path, key].join(".")}`,
-            );
-          }
-          continue;
-        }
-        result[key] = validateJson(
-          propertySchema,
-          propertyValue,
-          [...path, key],
-        );
-      }
-      return result as jsonType<T>;
-    }
-    default: {
-      throw new Error(`Unknown JSON type ${schema["type"]}`);
-    }
+  const schemaTypes = Array.isArray(schema.type)
+    ? schema.type
+    : schema.type != null
+    ? [schema.type]
+    : [];
+
+  const getError = (actual: string) =>
+    new Error(
+      `Expected ${path.join(".") || "value"} to be ${
+        schemaTypes.join("|")
+      } but got ${actual}`,
+    );
+
+  if (value == null) {
+    if (!schemaTypes.includes("null")) throw getError(String(value));
+    return value as jsonType<T>;
   }
+
+  if (typeof value == "string") {
+    if (!schemaTypes.includes("string")) throw getError("string");
+    return value as jsonType<T>;
+  }
+
+  if (typeof value == "number") {
+    if (!schemaTypes.includes("number")) throw getError("number");
+    return value as jsonType<T>;
+  }
+
+  if (typeof value == "boolean") {
+    if (!schemaTypes.includes("boolean")) throw getError("boolean");
+    return value as jsonType<T>;
+  }
+
+  if (Array.isArray(value)) {
+    if (!schemaTypes.includes("array")) throw getError("array");
+    const result: unknown[] = [];
+    for (let index = 0; index < value.length; index++) {
+      result[index] = validateJson(
+        schema.items ?? {},
+        value[index],
+        [...path, index],
+      );
+    }
+    return result as jsonType<T>;
+  }
+
+  if (typeof value == "object") {
+    if (!schemaTypes.includes("object")) throw getError("object");
+    const result: Record<string, unknown> = {};
+    if (schema.required != null) {
+      for (const prop of schema.required) {
+        if (!(prop in value)) {
+          throw new Error(
+            `Missing required property ${[...path, prop].join(".")}`,
+          );
+        }
+      }
+    }
+    for (const [prop, propValue] of Object.entries(value)) {
+      result[prop] = validateJson(
+        schema.properties?.[prop] ?? schema.additionalProperties ?? {},
+        propValue,
+        [...path, prop],
+      );
+    }
+    return value as jsonType<T>;
+  }
+
+  throw getError(typeof value);
 }
 
 /**
  * JSON schema.
  */
-export type JsonSchema =
-  | { type: "string" }
-  | { type: "number" }
-  | { type: "integer" }
-  | { type: "boolean" }
-  | {
-    type: "array";
-    items: JsonSchema;
-  }
-  | {
-    type: "object";
-    properties: { [key: string]: JsonSchema };
-    required?: readonly string[];
-  };
+export type JsonSchema = {
+  type?: JsonType | readonly JsonType[];
+  items?: JsonSchema;
+  properties?: { [key: string]: JsonSchema };
+  additionalProperties?: JsonSchema;
+  required?: readonly string[];
+};
+
+type JsonType = "null" | "string" | "number" | "boolean" | "array" | "object";
 
 /**
  * Returns the type of a JSON value based on its schema.
  *
  * @template T The {@link JsonSchema}.
  */
-export type jsonType<T extends JsonSchema> = T extends { type: "string" }
-  ? string
-  : T extends { type: "number" } ? number
-  : T extends { type: "integer" } ? number
-  : T extends { type: "boolean" } ? boolean
-  : T extends { type: "array"; items: infer I extends JsonSchema } ? (
-      jsonType<I>[]
-    )
-  : T extends {
-    type: "object";
-    properties: infer P extends { [key: string]: JsonSchema };
-  } ? (
-      T extends { required: infer R extends readonly unknown[] } ? (
-          & {
-            [K in keyof P as K extends R[number] ? K : never]: jsonType<P[K]>;
-          }
-          & {
-            [K in keyof P as K extends R[number] ? never : K]?:
-              | jsonType<P[K]>
-              | undefined;
-          }
+export type jsonType<T extends JsonSchema> =
+  | (
+    "null" extends arrayValues<T["type"]> ? null : never
+  )
+  | (
+    "string" extends arrayValues<T["type"]> ? string : never
+  )
+  | (
+    "number" extends arrayValues<T["type"]> ? number : never
+  )
+  | (
+    "boolean" extends arrayValues<T["type"]> ? boolean : never
+  )
+  | (
+    "array" extends arrayValues<T["type"]> ? (
+        & unknown[]
+        & (
+          T extends { items: infer S extends JsonSchema } ? jsonType<S>[]
+            : never
         )
-        : (
-          {
-            [K in keyof P]?: jsonType<P[K]> | undefined;
-          }
+      )
+      : never
+  )
+  | (
+    "object" extends arrayValues<T["type"]> ? (
+        & object
+        & (
+          T extends
+            { properties: infer P extends { [key: string]: JsonSchema } } ? (
+              T extends { required: infer R extends readonly unknown[] } ? (
+                  & {
+                    [K in keyof P as K extends R[number] ? K : never]: jsonType<
+                      P[K]
+                    >;
+                  }
+                  & {
+                    [K in keyof P as K extends R[number] ? never : K]?:
+                      | jsonType<P[K]>
+                      | undefined;
+                  }
+                )
+                : {
+                  [K in keyof P]?: jsonType<P[K]> | undefined;
+                }
+            )
+            : object
         )
-    )
+        & (
+          T extends { additionalProperties: infer A extends JsonSchema } ? (
+              { [key: string]: jsonType<A> }
+            )
+            : object
+        )
+      )
+      : never
+  );
+
+type arrayValues<T> = T extends readonly unknown[] ? T[number]
+  : T extends string ? T
   : never;

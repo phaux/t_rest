@@ -1,4 +1,3 @@
-import { parseMediaType } from "https://deno.land/std@0.203.0/media_types/parse_media_type.ts";
 import type { Api, RouteMap } from "../server/Api.ts";
 import type { ApiResponse, Endpoint } from "../server/Endpoint.ts";
 import type { BodySchema, bodyType } from "../server/body.ts";
@@ -75,9 +74,8 @@ export class Client<
     }
 
     const response = await fetch(requestUrl, request);
-    const [responseType, _] = parseMediaType(
-      response.headers.get("content-type") ?? "text/plain",
-    );
+    const responseType = response.headers.get("content-type")
+      ?.split(";").shift()?.trim().toLowerCase() ?? "text/plain";
 
     switch (responseType) {
       case "text/plain": {

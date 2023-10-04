@@ -1,0 +1,5 @@
+{
+  "tasks": {
+    "build": "deno run -A https://deno.land/x/dntx/mod.ts -n ty-rest -e ./client=client/mod.ts -e ./server=server/mod.ts --declaration separate --no-script-module --no-test"
+  }
+}

@@ -16,13 +16,13 @@ export async function validateFormData<T extends FormDataSchema>(
     const paramValue = value.get(key);
 
     if (paramValue == null) {
-      throw new Error(`Missing param ${key}`);
+      throw new Error(`Missing field ${key}`);
     }
 
     switch (paramSchema.kind) {
       case "value": {
         if (!(typeof paramValue == "string")) {
-          throw new Error(`Expected ${key} to be a simple value`);
+          throw new Error(`Expected field ${key} to be a simple value`);
         }
         switch (paramSchema.type) {
           case "string": {
@@ -32,7 +32,7 @@ export async function validateFormData<T extends FormDataSchema>(
           case "number": {
             const value = parseFloat(paramValue);
             if (isNaN(value)) {
-              throw new Error(`Expected ${key} to be a number`);
+              throw new Error(`Expected field ${key} to be a number`);
             }
             result[key] = value;
             break;
@@ -40,7 +40,7 @@ export async function validateFormData<T extends FormDataSchema>(
           case "integer": {
             const number = parseInt(paramValue, 10);
             if (isNaN(number)) {
-              throw new Error(`Expected ${key} to be an integer`);
+              throw new Error(`Expected field ${key} to be an integer`);
             }
             result[key] = number;
             break;
@@ -54,7 +54,7 @@ export async function validateFormData<T extends FormDataSchema>(
 
       case "file": {
         if (!(paramValue instanceof File)) {
-          throw new Error(`Expected ${key} to be a file`);
+          throw new Error(`Expected field ${key} to be a file`);
         }
         switch (paramSchema.type) {
           case "application/json": {
@@ -65,7 +65,7 @@ export async function validateFormData<T extends FormDataSchema>(
               );
             } catch (error) {
               throw new Error(
-                `Invalid JSON in ${key}: ${error.message}`,
+                `Invalid JSON in field ${key}: ${error.message}`,
               );
             }
             break;
