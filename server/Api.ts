@@ -48,28 +48,27 @@ export class Api<
    * ```
    */
   serve = async (request: Request): Promise<Response> => {
-    const url = new URL(request.url);
-    const path = url.pathname;
-    for (const key in this.api) {
+    const requestUrl = new URL(request.url);
+    const requestPath = requestUrl.pathname;
+    for (const [pathPattern, route] of Object.entries(this.api)) {
       // turn key into regexp where {param} become capture groups
-      const keyRegexp = new RegExp(
-        `^/${escape(key)}(?<rest>|/.*)$`
+      const pathRegexp = new RegExp(
+        `^/${escape(pathPattern)}(?<rest>|/.*)$`
           .replace(
             /\\\{([\w][\w\d]*)\\\}/g,
             (_match, param) => `(?<${param}>[^/]+)`,
           ),
         "u",
       );
-      const match = keyRegexp.exec(path);
-      if (match == null) continue;
-      const route = this.api[key];
-      const subUrl = new URL(url);
-      subUrl.pathname = (match.groups?.rest)!;
-      const subRequest = new Request(subUrl, request);
+      const pathMatch = pathRegexp.exec(requestPath);
+      if (pathMatch == null) continue;
+      const subRequestUrl = new URL(requestUrl);
+      subRequestUrl.pathname = (pathMatch.groups?.rest)!;
+      const subRequest = new Request(subRequestUrl, request);
       if (route instanceof Api) {
         return await route.serve(subRequest);
       }
-      if (!match.groups?.rest) {
+      if (!pathMatch.groups?.rest) {
         const endpoint = route[request.method as keyof Route];
         if (endpoint == null) {
           return new Response("Method not allowed", { status: 405 });

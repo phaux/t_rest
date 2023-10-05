@@ -66,11 +66,11 @@ export function validateJson<T extends JsonSchema>(
         }
       }
     }
-    for (const [prop, propValue] of Object.entries(value)) {
-      result[prop] = validateJson(
-        schema.properties?.[prop] ?? schema.additionalProperties ?? {},
+    for (const [propName, propValue] of Object.entries(value)) {
+      result[propName] = validateJson(
+        schema.properties?.[propName] ?? schema.additionalProperties ?? {},
         propValue,
-        [...path, prop],
+        [...path, propName],
       );
     }
     return value as jsonType<T>;

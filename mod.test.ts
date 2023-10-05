@@ -534,6 +534,7 @@ Deno.test("form data request", async () => {
             body: {
               message: `Hello ${body.name}, you are ${body.age} years old`,
               photoSize: body.photo.size,
+              photoType: body.photo.type,
               tagsCount: body.metadata.tags.length,
             },
           };
@@ -566,6 +567,7 @@ Deno.test("form data request", async () => {
       body: {
         message: "Hello John, you are 42 years old",
         photoSize: 1024,
+        photoType: "application/octet-stream",
         tagsCount: 2,
       },
     },

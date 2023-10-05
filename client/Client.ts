@@ -34,8 +34,8 @@ export class Client<
     const { query, type, body } = input ?? {};
     const requestUrl = new URL(path, this.baseUrl);
     if (query) {
-      for (const key in query) {
-        requestUrl.searchParams.set(key, String(query[key]));
+      for (const [paramName, paramValue] of Object.entries(query)) {
+        requestUrl.searchParams.set(paramName, String(paramValue));
       }
     }
     const request: RequestInit = { method };
@@ -52,19 +52,21 @@ export class Client<
         }
         case "multipart/form-data": {
           const formData = new FormData();
-          for (const key in body) {
-            const value = body[key];
-            if (typeof value == "string" || typeof value == "number") {
-              formData.set(key, String(value));
-            }
-            if (typeof value == "object" && value != null) {
-              const jsonBlob = new Blob([JSON.stringify(value)], {
+          for (const [fieldName, fieldValue] of Object.entries(body)) {
+            if ((fieldValue as any) instanceof Blob) {
+              console.log(fieldName, "blob", fieldValue);
+              formData.set(fieldName, fieldValue);
+            } else if (typeof fieldValue == "object" && fieldValue != null) {
+              console.log(fieldName, "json", fieldValue);
+              const jsonBlob = new Blob([JSON.stringify(fieldValue)], {
                 type: "application/json",
               });
-              formData.set(key, jsonBlob);
-            }
-            if ((value as any) instanceof Blob) {
-              formData.set(key, value);
+              formData.set(fieldName, jsonBlob);
+            } else if (
+              typeof fieldValue == "string" || typeof fieldValue == "number"
+            ) {
+              console.log(fieldName, "simple", fieldValue);
+              formData.set(fieldName, String(fieldValue));
             }
           }
           request.body = formData;
@@ -93,7 +95,6 @@ export class Client<
         } as pathOutput<A["api"], P, M>;
       }
       default: {
-        console.log(response);
         throw new Error(`Unknown response type ${responseType}`);
       }
     }

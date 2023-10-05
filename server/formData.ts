@@ -11,78 +11,77 @@ export async function validateFormData<T extends FormDataSchema>(
 ): Promise<formDataType<T>> {
   const result: Record<string, unknown> = {};
 
-  for (const key in schema) {
-    const paramSchema = schema[key];
-    const paramValue = value.get(key);
+  for (const [fieldName, fieldSchema] of Object.entries(schema)) {
+    const fieldValue = value.get(fieldName);
 
-    if (paramValue == null) {
-      throw new Error(`Missing field ${key}`);
+    if (fieldValue == null) {
+      throw new Error(`Missing field ${fieldName}`);
     }
 
-    switch (paramSchema.kind) {
+    switch (fieldSchema.kind) {
       case "value": {
-        if (!(typeof paramValue == "string")) {
-          throw new Error(`Expected field ${key} to be a simple value`);
+        if (!(typeof fieldValue == "string")) {
+          throw new Error(`Expected field ${fieldName} to be a simple value`);
         }
-        switch (paramSchema.type) {
+        switch (fieldSchema.type) {
           case "string": {
-            result[key] = paramValue;
+            result[fieldName] = fieldValue;
             break;
           }
           case "number": {
-            const value = parseFloat(paramValue);
+            const value = parseFloat(fieldValue);
             if (isNaN(value)) {
-              throw new Error(`Expected field ${key} to be a number`);
+              throw new Error(`Expected field ${fieldName} to be a number`);
             }
-            result[key] = value;
+            result[fieldName] = value;
             break;
           }
           case "integer": {
-            const number = parseInt(paramValue, 10);
+            const number = parseInt(fieldValue, 10);
             if (isNaN(number)) {
-              throw new Error(`Expected field ${key} to be an integer`);
+              throw new Error(`Expected field ${fieldName} to be an integer`);
             }
-            result[key] = number;
+            result[fieldName] = number;
             break;
           }
           default: {
-            throw new Error(`Unknown form data type ${paramSchema["type"]}`);
+            throw new Error(`Unknown form data type ${fieldSchema["type"]}`);
           }
         }
         break;
       }
 
       case "file": {
-        if (!(paramValue instanceof File)) {
-          throw new Error(`Expected field ${key} to be a file`);
+        if (!(fieldValue instanceof File)) {
+          throw new Error(`Expected field ${fieldName} to be a file`);
         }
-        switch (paramSchema.type) {
+        switch (fieldSchema.type) {
           case "application/json": {
             try {
-              result[key] = validateJson(
-                paramSchema.schema,
-                JSON.parse(await paramValue.text()),
+              result[fieldName] = validateJson(
+                fieldSchema.schema,
+                JSON.parse(await fieldValue.text()),
               );
             } catch (error) {
               throw new Error(
-                `Invalid JSON in field ${key}: ${error.message}`,
+                `Invalid JSON in field ${fieldName}: ${error.message}`,
               );
             }
             break;
           }
           case "application/octet-stream": {
-            result[key] = paramValue;
+            result[fieldName] = fieldValue;
             break;
           }
           default: {
-            throw new Error(`Unknown form data type ${paramSchema["type"]}`);
+            throw new Error(`Unknown form data type ${fieldSchema["type"]}`);
           }
         }
         break;
       }
 
       default: {
-        throw new Error(`Unknown form data kind ${paramSchema["kind"]}`);
+        throw new Error(`Unknown form data kind ${fieldSchema["kind"]}`);
       }
     }
   }

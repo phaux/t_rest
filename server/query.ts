@@ -8,31 +8,30 @@ export function validateQuery<T extends QuerySchema>(
   value: URLSearchParams,
 ): queryType<T> {
   const result: Record<string, unknown> = {};
-  for (const key in schema) {
-    const paramSchema = schema[key];
-    const paramValue = value.get(key);
+  for (const [paramName, paramSchema] of Object.entries(schema)) {
+    const paramValue = value.get(paramName);
     if (paramValue == null) {
-      throw new Error(`Missing param ${key}`);
+      throw new Error(`Missing param ${paramName}`);
     }
     switch (paramSchema.type) {
       case "string": {
-        result[key] = paramValue;
+        result[paramName] = paramValue;
         break;
       }
       case "number": {
         const value = parseFloat(paramValue);
         if (isNaN(value)) {
-          throw new Error(`Expected param ${key} to be a number`);
+          throw new Error(`Expected param ${paramName} to be a number`);
         }
-        result[key] = value;
+        result[paramName] = value;
         break;
       }
       case "integer": {
         const number = parseInt(paramValue, 10);
         if (isNaN(number)) {
-          throw new Error(`Expected param ${key} to be an integer`);
+          throw new Error(`Expected param ${paramName} to be an integer`);
         }
-        result[key] = number;
+        result[paramName] = number;
         break;
       }
       default: {
