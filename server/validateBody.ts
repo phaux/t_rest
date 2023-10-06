@@ -1,5 +1,9 @@
-import { JsonSchema, jsonType, validateJson } from "./json.ts";
-import { FormDataSchema, formDataType, validateFormData } from "./formData.ts";
+import { JsonSchema, jsonType, validateJson } from "./validateJson.ts";
+import {
+  FormDataSchema,
+  formDataType,
+  validateFormData,
+} from "./validateFormData.ts";
 
 /**
  * Used by {@link Endpoint} to validate the body of a request.
@@ -12,21 +16,30 @@ export async function validateBody<T extends BodySchema>(
 ): Promise<bodyType<T>> {
   switch (schema.type) {
     case "text/plain": {
-      return (await request.text()) as bodyType<T>;
+      return {
+        type: "text/plain",
+        data: await request.text(),
+      } as bodyType<T>;
     }
     case "application/json": {
       try {
-        return validateJson(schema.schema, await request.json()) as bodyType<T>;
+        return {
+          type: "application/json",
+          data: validateJson(schema.schema, await request.json()),
+        } as bodyType<T>;
       } catch (error) {
         throw new Error(`Invalid JSON: ${error.message}`);
       }
     }
     case "multipart/form-data": {
       try {
-        return (await validateFormData(
-          schema.schema,
-          await request.formData(),
-        )) as bodyType<T>;
+        return {
+          type: "multipart/form-data",
+          data: await validateFormData(
+            schema.schema,
+            await request.formData(),
+          ),
+        } as bodyType<T>;
       } catch (error) {
         throw new Error(`Invalid form data: ${error.message}`);
       }
@@ -53,10 +66,10 @@ export type BodySchema =
  * @template T The {@link BodySchema}.
  */
 export type bodyType<T extends BodySchema> = T extends { type: "text/plain" }
-  ? string
+  ? { type: "text/plain"; data: string }
   : T extends { type: "application/json"; schema: infer S extends JsonSchema }
-    ? jsonType<S>
+    ? { type: "application/json"; data: jsonType<S> }
   : T extends
     { type: "multipart/form-data"; schema: infer S extends FormDataSchema }
-    ? formDataType<S>
+    ? { type: "multipart/form-data"; data: formDataType<S> }
   : never;

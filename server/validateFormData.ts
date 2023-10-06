@@ -1,4 +1,4 @@
-import { JsonSchema, jsonType, validateJson } from "./json.ts";
+import { JsonSchema, jsonType, validateJson } from "./validateJson.ts";
 
 /**
  * Validates form data against a form data schema.
