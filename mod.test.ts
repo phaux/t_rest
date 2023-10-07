@@ -5,6 +5,7 @@ import { delay } from "https://deno.land/std@0.203.0/async/delay.ts";
 import { createFetcher } from "./client/createFetcher.ts";
 import {
   createEndpoint,
+  createLoggerMiddleware,
   createMethodFilter,
   createPathFilter,
 } from "./server/mod.ts";
@@ -12,7 +13,7 @@ import {
 const assertType = <T>(_: T) => {};
 
 Deno.test("simple request", async () => {
-  const serveApi = createPathFilter({
+  const serveApi = createLoggerMiddleware(createPathFilter({
     "": createMethodFilter({
       GET: createEndpoint(
         { body: undefined, query: undefined },
@@ -52,7 +53,7 @@ Deno.test("simple request", async () => {
         },
       ),
     }),
-  });
+  }));
   const controller = new AbortController();
   const server = Deno.serve(
     { port: 8123, signal: controller.signal },
