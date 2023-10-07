@@ -1,12 +1,12 @@
-import { JsonSchema, jsonType, validateJson } from "./validateJson.ts";
 import {
   FormDataSchema,
   formDataType,
   validateFormData,
 } from "./validateFormData.ts";
+import { JsonSchema, jsonType, validateJson } from "./validateJson.ts";
 
 /**
- * Used by {@link Endpoint} to validate the body of a request.
+ * Used by endpoints to validate the body of a request.
  *
  * @internal
  */
@@ -53,7 +53,7 @@ export async function validateBody<T extends BodySchema>(
 }
 
 /**
- * Request body schema used by {@link Endpoint}.
+ * Request body schema used by endpoint.
  */
 export type BodySchema =
   | { type: "text/plain" }

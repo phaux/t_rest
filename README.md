@@ -9,11 +9,15 @@ Library inspired by tRPC for REST APIs.
 `server.ts`:
 
 ```ts
-import { Api, Endpoint } from "https://deno.land/x/t_rest/server/mod.ts";
+import {
+  createEndpoint,
+  createMethodFilter,
+  createPathFilter,
+} from "https://deno.land/x/t_rest/server/mod.ts";
 
-const myApi = new Api({
-  "hello": {
-    GET: new Endpoint(
+const serveApi = createPathFilter({
+  "hello": createMethodFilter({
+    GET: createEndpoint(
       {
         query: { name: { type: "string" } },
         body: null,
@@ -21,36 +25,40 @@ const myApi = new Api({
       async ({ query }) => {
         return {
           status: 200,
-          type: "text/plain",
-          body: `Hello ${query.name}`,
+          body: {
+            type: "text/plain",
+            data: `Hello ${query.name}`,
+          },
         };
       },
     ),
-  },
+  }),
 });
 
-Deno.serve({ port: 8000 }, myApi.serve);
+Deno.serve({ port: 8000 }, serveApi);
 
-export type MyApi = typeof myApi;
+export type ApiHandler = typeof serveApi;
 ```
 
 `client.ts`:
 
 ```ts
 // @deno-types="https://deno.land/x/t_rest/client/mod.ts"
-import { Client } from "https://esb.deno.dev/https://deno.land/x/t_rest/client/mod.ts";
-import { type MyApi } from "./server.ts";
+import { createFetcher } from "https://esb.deno.dev/https://deno.land/x/t_rest/client/mod.ts";
+import { type ApiHandler } from "./server.ts";
 
-const client = new Client<MyApi>("http://localhost:8080");
+const fetchApi = createFetcher<ApiHandler>({
+  baseUrl: "http://localhost:8080/",
+});
 
-const response = await client.fetch("hello", "GET", {
+const response = await fetchApi("hello", "GET", {
   query: { name: "world" },
 });
 
 if (response.status !== 200) {
   throw new Error("Request failed");
 }
-console.log(response.body); // Hello world
+console.log(response.body); // { type: "text/plain", data: "Hello world" }
 ```
 
 See more examples in [tests](./mod.test.ts).

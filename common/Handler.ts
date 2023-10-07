@@ -1,34 +1,79 @@
-import { Nullable } from "./Nullable.ts";
 import { BodySchema, bodyType } from "../server/validateBody.ts";
 import { QuerySchema, queryType } from "../server/validateQuery.ts";
+import { Nullable } from "./Nullable.ts";
 
-declare const actualTypeField: unique symbol;
-declare const actualInputField: unique symbol;
-declare const actualOutputField: unique symbol;
+declare const api: unique symbol;
 
+/**
+ * Request handler with a hidden {@link Api} type.
+ *
+ * The handler value is just a function taking {@link Request} and returning {@link Response}
+ * and can be passed to {@link Deno.serve}.
+ *
+ * The hidden type should be a subtype of {@link Api}.
+ * It is then used to infer the types for the client.
+ *
+ * @template A The {@link Api} type.
+ */
 export type Handler<
-  I extends Input = Input,
-  O extends Output = Output,
-> = ((request: Request) => Promise<Response>) & {
-  [actualInputField]?: I;
-  [actualOutputField]?: O;
+  A = unknown, // can't use `Api` here because "not assignable" error
+> =
+  & ((request: Request) => Promise<Response>)
+  & { [api]?: A };
+
+/**
+ * Type describing valid API endpoints.
+ *
+ * It's a map of paths to a map of methods to a {@link Endpoint}.
+ */
+export type Api = {
+  [path: string]: {
+    [method: string]: Endpoint;
+  };
 };
 
-export type Input<
-  P extends string = string,
-  M extends string = string,
-  Q extends Nullable<queryType<QuerySchema>> = Nullable<queryType<QuerySchema>>,
-  B extends Nullable<bodyType<BodySchema>> = Nullable<bodyType<BodySchema>>,
+/**
+ * Returns the {@link Api} type of a {@link Handler}.
+ *
+ * @template H The {@link Handler} type.
+ */
+export type handlerApi<H extends Handler> = NonNullable<
+  H[typeof api]
+>;
+
+/**
+ * Type contained in {@link Api} describing a single endpoint.
+ *
+ * It contains the {@link Input} and {@link Output} types of the endpoint.
+ */
+export type Endpoint<
+  I extends Input = Input,
+  O extends Output = Output,
 > = {
-  path: P;
-  method: M;
+  input: I;
+  output: O;
+};
+
+/**
+ * Type describing the input of an {@link Api}'s {@link Endpoint}.
+ */
+export type Input<
+  Q extends AnyQuery = AnyQuery,
+  B extends AnyBody = AnyBody,
+> = {
   query: Q;
   body: B;
 };
 
+/**
+ * Type describing the output of an {@link Api}'s {@link Endpoint}.
+ */
 export type Output<
   B extends bodyType<BodySchema> = bodyType<BodySchema>,
 > = {
   status: number;
   body: B;
 };
+
+export type AnyQuery = Nullable<queryType<QuerySchema>>;
+export type AnyBody = Nullable<bodyType<BodySchema>>;
