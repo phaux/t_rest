@@ -13,12 +13,20 @@ declare const api: unique symbol;
  * The hidden type should be a subtype of {@link Api}.
  * It is then used to infer the types for the client.
  *
+ * The second argument of the handler is an info object which `Deno.serve` passes, but it is ignored.
+ * A handler can also receive a third argument which is a map of extracted path parameters.
+ * Filters and middlewares use it internally.
+ *
  * @template A The {@link Api} type.
  */
 export type Handler<
   A = unknown, // can't use `Api` here because "not assignable" error
 > =
-  & ((request: Request) => Promise<Response>)
+  & ((
+    request: Request,
+    info?: Deno.ServeHandlerInfo,
+    params?: Record<string, string>,
+  ) => Promise<Response>)
   & { [api]?: A };
 
 /**
@@ -61,6 +69,7 @@ export type Input<
   Q extends AnyQuery = AnyQuery,
   B extends AnyBody = AnyBody,
 > = {
+  params: Record<string, string>;
   query: Q;
   body: B;
 };

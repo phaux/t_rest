@@ -23,7 +23,7 @@ export function createMethodFilter<MM extends MethodMap>(
     }[keyof MM & string]
   >
 > {
-  return async (request: Request): Promise<Response> => {
+  return async (request, info, params) => {
     const requestUrl = new URL(request.url);
     if (requestUrl.pathname !== "/") {
       return new Response("Not found", { status: 404 });
@@ -32,7 +32,7 @@ export function createMethodFilter<MM extends MethodMap>(
     if (handleMethod == null) {
       return new Response("Method not allowed", { status: 405 });
     }
-    return await handleMethod(request);
+    return await handleMethod(request, info, params);
   };
 }
 

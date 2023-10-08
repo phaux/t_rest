@@ -4,7 +4,13 @@ export function createMiddleware<
   const H extends Handler,
 >(
   handler: H,
-  middleware: (request: Request, next: H) => Promise<Response>,
+  middleware: (
+    request: Request,
+    next: () => Promise<Response>,
+  ) => Promise<Response>,
 ): H {
-  return ((request: Request) => middleware(request, handler)) as H;
+  return (
+    (request, info, params) =>
+      middleware(request, () => handler(request, info, params))
+  ) as H;
 }

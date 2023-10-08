@@ -107,6 +107,17 @@ Deno.test("simple request", async () => {
     );
   }
   assertEquals(
+    // @ts-expect-error - invalid path - extra slash
+    await fetchApi("hello/", "GET", {
+      query: { name: "foo" },
+    }),
+    // extra slash still matches
+    {
+      status: 200,
+      body: { type: "text/plain", data: "Hello foo" },
+    },
+  );
+  assertEquals(
     // @ts-expect-error - invalid path
     await fetchApi("hellooo", "GET", {
       query: { name: "world" },
@@ -672,6 +683,115 @@ Deno.test("form data request", async () => {
         type: "text/plain",
         data:
           "Bad request: Invalid body: Invalid form data: Invalid JSON in field metadata: Missing required property tags",
+      },
+    },
+  );
+  controller.abort();
+  await server.finished;
+});
+
+Deno.test("takes path params", async () => {
+  const serveApi = createPathFilter({
+    "users/{userId}": createPathFilter({
+      "": createMethodFilter({
+        "GET": createEndpoint(
+          { query: null, body: null },
+          async ({ params }) => {
+            // assertType<{ userId: string }>(params);
+            return {
+              status: 200,
+              body: {
+                type: "text/plain",
+                data: `User ${params.userId}`,
+              },
+            };
+          },
+        ),
+      }),
+      "{postId}": createMethodFilter({
+        GET: createEndpoint(
+          { query: null, body: null },
+          async ({ params }) => {
+            return {
+              status: 200,
+              body: {
+                type: "text/plain",
+                data: `User ${params.userId} post ${params.postId}`,
+              },
+            };
+          },
+        ),
+      }),
+    }),
+  });
+  const controller = new AbortController();
+  const server = Deno.serve(
+    { port: 8145, signal: controller.signal },
+    serveApi,
+  );
+  const fetchApi = createFetcher<typeof serveApi>({
+    baseUrl: "http://localhost:8145/",
+  });
+  await delay(100);
+  assertEquals(
+    await fetchApi("users/{userId}", "GET", {
+      params: { userId: "!?/@#$%^&*(),.;''|{}[]-=+" },
+    }),
+    {
+      status: 200,
+      body: {
+        type: "text/plain",
+        data: "User !?/@#$%^&*(),.;''|{}[]-=+",
+      },
+    },
+  );
+  assertEquals(
+    await fetchApi("users/{userId}/{postId}", "GET", {
+      params: { userId: "john", postId: "1" },
+    }),
+    {
+      status: 200,
+      body: {
+        type: "text/plain",
+        data: "User john post 1",
+      },
+    },
+  );
+  assertEquals(
+    await fetchApi("users/{userId}/{postId}", "GET", {
+      params: { userId: "", postId: "1" },
+    }),
+    {
+      status: 200,
+      body: {
+        type: "text/plain",
+        data: "User  post 1",
+      },
+    },
+  );
+  assertEquals(
+    await fetchApi("users/{userId}/{postId}", "GET", {
+      params: { userId: "", postId: "" },
+    }),
+    // empty postId actually matches the root endpoint
+    {
+      status: 200,
+      body: {
+        type: "text/plain",
+        data: "User ",
+      },
+    },
+  );
+  assertEquals(
+    await fetchApi("users/{userId}/{postId}", "GET", {
+      // @ts-expect-error - missing param
+      params: { postId: "123" },
+    }),
+    {
+      status: 200,
+      body: {
+        type: "text/plain",
+        data: "User {userId} post 123",
       },
     },
   );

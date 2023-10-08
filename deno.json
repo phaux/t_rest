@@ -1,6 +1,6 @@
 {
   "tasks": {
     "build": "deno run -A https://deno.land/x/dntx@v0.2.0/mod.ts -n ty-rest -e ./client=client/mod.ts -e ./server=server/mod.ts --declaration separate --no-script-module --no-test",
-    "test": "deno test --allow-net"
+    "test": "deno test --allow-net --coverage=coverage && deno coverage --lcov coverage --output=coverage/lcov.info"
   }
 }

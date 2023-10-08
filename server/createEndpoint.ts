@@ -1,6 +1,7 @@
 import { Endpoint, Handler, Input, Output } from "../common/Handler.ts";
 import { Nullable, Nullish } from "../common/Nullable.ts";
 import { initFormData } from "../common/initFormData.ts";
+// deno-lint-ignore no-unused-vars
 import { createPathFilter } from "./createPathFilter.ts";
 import { BodySchema, bodyType, validateBody } from "./validateBody.ts";
 import { QuerySchema, queryType, validateQuery } from "./validateQuery.ts";
@@ -47,7 +48,7 @@ export function createEndpoint<
     >;
   };
 }> {
-  return async (request: Request): Promise<Response> => {
+  return async (request, _info, params) => {
     const requestUrl = new URL(request.url);
     if (requestUrl.pathname !== "/") {
       return new Response("Not found", { status: 404 });
@@ -80,6 +81,7 @@ export function createEndpoint<
     }
 
     const response = await handler({
+      params: params ?? {},
       query: requestQuery as Q extends object ? queryType<Q> : undefined | null,
       body: requestBody as B extends object ? bodyType<B> : undefined | null,
     });

@@ -68,6 +68,6 @@ See more examples in [tests](./mod.test.ts).
 - [x] Query params
 - [x] JSON body (`application/json`)
 - [x] File uploads (`multipart/form-data`)
-- [ ] Path segment params
+- [x] Path segment params
 - [ ] Custom headers
 - [ ] Subscriptions (Server Sent Events / WebSockets)

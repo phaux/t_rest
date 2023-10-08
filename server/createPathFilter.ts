@@ -9,6 +9,10 @@ import { unionToIntersection } from "../common/unionToIntersection.ts";
  * The path patterns should omit the leading slash.
  * The request path can either match the whole pattern or can have additional path segments.
  *
+ * The pattern can contain params in the form of `{param}`.
+ * Param patterns match any characters except for a slash.
+ * They are extracted and their values are available in descendant handlers.
+ *
  * If a request matches then the matched path prefix is removed and the matched {@link Handler} is called with the rest of the path.
  * If the request matched the whole path, the {@link Handler} is called with an empty path (`/`).
  *
@@ -18,8 +22,8 @@ import { unionToIntersection } from "../common/unionToIntersection.ts";
  * Provided path definitions are also used to infer valid request paths for the client.
  * If a path's handler contains it's own sub-paths, the paths are joined with a slash automatically.
  */
-export function createPathFilter<PM extends PathMap>(
-  pathMap: PM,
+export function createPathFilter<PM extends { [path: string]: Handler }>(
+  pathMap: PM & { [P in keyof PM & string]: Handler<unknown> },
 ): Handler<
   unionToIntersection<
     {
@@ -33,25 +37,32 @@ export function createPathFilter<PM extends PathMap>(
     }[keyof PM & string]
   >
 > {
-  return async (request: Request): Promise<Response> => {
+  return async (request, info, params) => {
     const requestUrl = new URL(request.url);
     const requestPath = requestUrl.pathname;
     for (const [pathPattern, handlePath] of Object.entries(pathMap)) {
-      // turn key into regexp where {param} become capture groups
+      // turn pathPattern into regexp where {param} become capture groups
       const pathRegexp = new RegExp(
-        `^/${escape(pathPattern)}(?<rest>|/.*)$`
+        `^/${escape(pathPattern)}(?<_>|/.*)$`
           .replace(
             /\\\{([\w][\w\d]*)\\\}/g,
-            (_match, param) => `(?<${param}>[^/]+)`,
+            (_match, param) => `(?<${param}>[^/]*?)`,
           ),
         "u",
       );
       const pathMatch = pathRegexp.exec(requestPath);
       if (pathMatch == null) continue;
       const subRequestUrl = new URL(requestUrl);
-      subRequestUrl.pathname = (pathMatch.groups?.rest)!;
+      subRequestUrl.pathname = (pathMatch.groups?._)!;
       const subRequest = new Request(subRequestUrl, request);
-      return await handlePath(subRequest);
+      const pathMatchParams = Object.fromEntries(
+        Object.entries(pathMatch.groups ?? {})
+          .map(([key, value]) => [key, decodeURIComponent(value)]),
+      );
+      return await handlePath(subRequest, info, {
+        ...(params ?? {}),
+        ...pathMatchParams,
+      });
     }
     return new Response("Not found", { status: 404 });
   };

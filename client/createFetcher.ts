@@ -39,7 +39,14 @@ export function createFetcher<H extends Handler>(
     method: M,
     input: handlerInput<H, P, M>,
   ): Promise<handlerOutput<H, P, M>> => {
-    const requestUrl = new URL(path, options.baseUrl);
+    let requestPath: string = path;
+    for (const [paramName, paramValue] of Object.entries(input.params ?? {})) {
+      requestPath = requestPath.replace(
+        `{${paramName}}`,
+        encodeURIComponent(String(paramValue)),
+      );
+    }
+    const requestUrl = new URL(requestPath, options.baseUrl);
     if (input.query) {
       for (const [paramName, paramValue] of Object.entries(input.query)) {
         requestUrl.searchParams.set(paramName, String(paramValue));

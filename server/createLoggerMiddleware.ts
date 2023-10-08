@@ -17,7 +17,7 @@ export function createLoggerMiddleware<
 ): H {
   return createMiddleware(handler, async (request, next) => {
     const startDate = Date.now();
-    const response = await next(request);
+    const response = await next();
     const durationMs = Date.now() - startDate;
     const requestPath = new URL(request.url).pathname;
     if (

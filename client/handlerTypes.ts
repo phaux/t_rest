@@ -33,6 +33,9 @@ export type handlerInput<
   M extends handlerMethod<H, P>,
 > = handlerApi<H>[P][M] extends Endpoint<infer I>
   ? (I extends { query: infer Q; body: infer B } ? (
+      & (pathParams<P> extends infer PP
+        ? (PP extends object ? { params: PP } : { params?: Nullish })
+        : never)
       & (Q extends object ? { query: Q } : { query?: Nullish })
       & (B extends object ? { body: B } : { body?: Nullish })
     )
@@ -51,3 +54,15 @@ export type handlerOutput<
   P extends handlerPath<H>,
   M extends handlerMethod<H, P>,
 > = handlerApi<H>[P][M] extends Endpoint<Input, infer O> ? O : never;
+
+/**
+ * Takes a path string and extracts `{params}` from it.
+ *
+ * Returns a map of param names to string.
+ *
+ * @template P The path string.
+ */
+export type pathParams<P extends string, X = undefined> = P extends
+  `${string}{${infer PP}}${infer P2}`
+  ? { [K in PP]: string } & pathParams<P2, unknown>
+  : X;
