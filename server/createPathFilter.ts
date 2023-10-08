@@ -22,8 +22,8 @@ import { unionToIntersection } from "../common/unionToIntersection.ts";
  * Provided path definitions are also used to infer valid request paths for the client.
  * If a path's handler contains it's own sub-paths, the paths are joined with a slash automatically.
  */
-export function createPathFilter<PM extends { [path: string]: Handler }>(
-  pathMap: PM & { [P in keyof PM & string]: Handler<unknown> },
+export function createPathFilter<PM extends PathMap>(
+  pathMap: PM,
 ): Handler<
   unionToIntersection<
     {

@@ -24,7 +24,7 @@ export type Handler<
 > =
   & ((
     request: Request,
-    info?: Deno.ServeHandlerInfo,
+    info?: unknown,
     params?: Record<string, string>,
   ) => Promise<Response>)
   & { [api]?: A };
