@@ -104,7 +104,8 @@ export type FormDataSchema = {
  * @template T The {@link FormDataSchema}.
  */
 export type formDataType<T extends FormDataSchema> = {
-  [K in keyof T]: T[K] extends { kind: "value"; type: "string" } ? string
+  -readonly [K in keyof T]: T[K] extends { kind: "value"; type: "string" }
+    ? string
     : T[K] extends { kind: "value"; type: "number" } ? number
     : T[K] extends { kind: "value"; type: "integer" } ? number
     : T[K] extends {

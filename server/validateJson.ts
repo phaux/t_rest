@@ -128,18 +128,19 @@ export type jsonType<T extends JsonSchema> =
             { properties: infer P extends { [key: string]: JsonSchema } } ? (
               T extends { required: infer R extends readonly unknown[] } ? (
                   & {
-                    [K in keyof P as K extends R[number] ? K : never]: jsonType<
-                      P[K]
-                    >;
+                    -readonly [K in keyof P as K extends R[number] ? K : never]:
+                      jsonType<P[K]>;
                   }
                   & {
-                    [K in keyof P as K extends R[number] ? never : K]?:
+                    -readonly [
+                      K in keyof P as K extends R[number] ? never : K
+                    ]?:
                       | jsonType<P[K]>
                       | undefined;
                   }
                 )
                 : {
-                  [K in keyof P]?: jsonType<P[K]> | undefined;
+                  -readonly [K in keyof P]?: jsonType<P[K]> | undefined;
                 }
             )
             : object

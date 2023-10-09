@@ -57,7 +57,7 @@ export type QuerySchema = {
  * @template T The {@link QuerySchema}.
  */
 export type queryType<T extends QuerySchema> = {
-  [K in keyof T]: T[K]["type"] extends "string" ? string
+  -readonly [K in keyof T]: T[K]["type"] extends "string" ? string
     : T[K]["type"] extends "number" ? number
     : T[K]["type"] extends "integer" ? number
     : never;

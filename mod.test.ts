@@ -798,3 +798,82 @@ Deno.test("takes path params", async () => {
   controller.abort();
   await server.finished;
 });
+
+Deno.test("values should be writable", async () => {
+  const serveApi = createPathFilter({
+    "$": createMethodFilter({
+      POST: createEndpoint(
+        {
+          query: { foo: { type: "string" } },
+          body: {
+            type: "application/json",
+            schema: {
+              type: "object",
+              properties: {
+                b: { type: "boolean" },
+                bar: { type: "array", items: { type: "number" } },
+                baz: {
+                  type: "object",
+                  additionalProperties: { type: "string" },
+                },
+              },
+              required: ["bar", "baz"],
+            },
+          },
+        },
+        async ({ query, body }) => {
+          query.foo += "!";
+          body.data.b = !body.data.b;
+          body.data.bar[0] += 1;
+          body.data.baz["baz"] += "!";
+          return {
+            status: 200,
+            body: {
+              type: "application/json",
+              data: {
+                foo2: query.foo,
+                b2: body.data.b,
+                bar2: body.data.bar[0],
+                baz2: body.data.baz["baz"],
+              },
+            },
+          };
+        },
+      ),
+    }),
+  });
+  const controller = new AbortController();
+  const server = Deno.serve(
+    { port: 8121, signal: controller.signal },
+    serveApi,
+  );
+  const fetchApi = createFetcher<typeof serveApi>({
+    baseUrl: "http://localhost:8121/",
+  });
+  await delay(100);
+  {
+    const response = await fetchApi("$", "POST", {
+      query: { foo: "foo" },
+      body: {
+        type: "application/json",
+        data: { bar: [1], baz: { baz: "baz" } },
+      },
+    });
+    // TODO: mutable response
+    // if (response.status === 200) {
+    //   response.body.data.foo2 += "!";
+    //   response.body.data.b2 = !response.body.data.b2;
+    //   response.body.data.bar2 += 1;
+    //   response.body.data.baz2 += "!";
+    // }
+    assertEquals(response, {
+      status: 200,
+      body: {
+        type: "application/json",
+        data: { foo2: "foo!", b2: true, bar2: 2, baz2: "baz!" },
+      },
+    });
+  }
+  controller.abort();
+  await server.finished;
+});
