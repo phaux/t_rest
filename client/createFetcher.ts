@@ -83,14 +83,29 @@ export function createFetcher<H extends Handler>(
           body: { type: "text/plain", data: await response.text() },
         } as handlerOutput<H, P, M>;
       }
+
       case "application/json": {
         return {
           status: response.status,
           body: { type: "application/json", data: await response.json() },
         } as handlerOutput<H, P, M>;
       }
+
       // TODO: formData
+
       default: {
+        if (
+          responseType === "application/octet-stream" ||
+          responseType.startsWith("image/") ||
+          responseType.startsWith("audio/") ||
+          responseType.startsWith("video/")
+        ) {
+          return {
+            status: response.status,
+            body: { type: responseType, data: await response.blob() },
+          } as handlerOutput<H, P, M>;
+        }
+
         throw new Error(`Unknown response type ${responseType}`);
       }
     }

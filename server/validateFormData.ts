@@ -5,10 +5,10 @@ import { JsonSchema, jsonType, validateJson } from "./validateJson.ts";
  *
  * @internal
  */
-export async function validateFormData<T extends FormDataSchema>(
-  schema: T,
+export async function validateFormData<FDS extends FormDataSchema>(
+  schema: FDS,
   value: FormData,
-): Promise<formDataType<T>> {
+): Promise<formDataType<FDS>> {
   const result: Record<string, unknown> = {};
 
   for (const [fieldName, fieldSchema] of Object.entries(schema)) {
@@ -85,7 +85,7 @@ export async function validateFormData<T extends FormDataSchema>(
       }
     }
   }
-  return result as formDataType<T>;
+  return result as formDataType<FDS>;
 }
 
 /**
@@ -101,18 +101,18 @@ export type FormDataSchema = {
 /**
  * Returns the type of form data based on its schema.
  *
- * @template T The {@link FormDataSchema}.
+ * @template FDS The {@link FormDataSchema}.
  */
-export type formDataType<T extends FormDataSchema> = {
-  -readonly [K in keyof T]: T[K] extends { kind: "value"; type: "string" }
+export type formDataType<FDS extends FormDataSchema> = {
+  -readonly [K in keyof FDS]: FDS[K] extends { kind: "value"; type: "string" }
     ? string
-    : T[K] extends { kind: "value"; type: "number" } ? number
-    : T[K] extends { kind: "value"; type: "integer" } ? number
-    : T[K] extends {
+    : FDS[K] extends { kind: "value"; type: "number" } ? number
+    : FDS[K] extends { kind: "value"; type: "integer" } ? number
+    : FDS[K] extends {
       kind: "file";
       type: "application/json";
       schema: infer S extends JsonSchema;
     } ? jsonType<S>
-    : T[K] extends { kind: "file"; type: "application/octet-stream" } ? Blob
+    : FDS[K] extends { kind: "file"; type: "application/octet-stream" } ? Blob
     : never;
 };

@@ -1,10 +1,8 @@
-import { Endpoint, Handler, Input, Output } from "../common/Handler.ts";
-import { Nullable, Nullish } from "../common/Nullable.ts";
-import { initFormData } from "../common/initFormData.ts";
+import { Endpoint, Handler, Output } from "../common/Handler.ts";
+import { InputSchema, inputType, transformInput } from "./transformInput.ts";
 // deno-lint-ignore no-unused-vars
 import { createPathFilter } from "./createPathFilter.ts";
-import { BodySchema, bodyType, validateBody } from "./validateBody.ts";
-import { QuerySchema, queryType, validateQuery } from "./validateQuery.ts";
+import { transformOutput } from "./transformOutput.ts";
 
 /**
  * Returns a {@link Handler} that validates the request against a given schema and calls the provided function if it's valid.
@@ -26,26 +24,14 @@ import { QuerySchema, queryType, validateQuery } from "./validateQuery.ts";
  * The response type will also always include the {@link DefaultOutput} type.
  */
 export function createEndpoint<
-  const Q extends Nullable<QuerySchema>,
-  const B extends Nullable<BodySchema>,
+  const IS extends InputSchema = InputSchema,
   const O extends Output = Output,
 >(
-  schema: { query: Q; body: B },
-  handler: (
-    input: Input<
-      Q extends object ? queryType<Q> : Nullish,
-      B extends object ? bodyType<B> : Nullish
-    >,
-  ) => Promise<O>,
+  schema: IS,
+  handler: (input: inputType<IS>) => Promise<O>,
 ): Handler<{
   "": {
-    [M in string]: Endpoint<
-      Input<
-        Q extends object ? queryType<Q> : Nullish,
-        B extends object ? bodyType<B> : Nullish
-      >,
-      O | DefaultOutput
-    >;
+    [M in string]: Endpoint<inputType<IS>, O | DefaultOutput>;
   };
 }> {
   return async (request, _info, params) => {
@@ -54,61 +40,19 @@ export function createEndpoint<
       return new Response("Not found", { status: 404 });
     }
 
-    let requestQuery: queryType<NonNullable<Q>> | undefined;
-    if (schema.query != null) {
-      try {
-        requestQuery = validateQuery(schema.query, requestUrl.searchParams);
-      } catch (error) {
-        return new Response(`Bad request: Invalid query: ${error.message}`, {
-          status: 400,
-        });
-      }
-    } else {
-      requestQuery = undefined;
+    let input;
+    try {
+      input = await transformInput(request, schema);
+    } catch (error) {
+      return new Response(`Bad request: ${error.message}`, { status: 400 });
     }
 
-    let requestBody: bodyType<NonNullable<B>> | undefined;
-    if (schema.body != null) {
-      try {
-        requestBody = await validateBody(schema.body, request);
-      } catch (error) {
-        return new Response(`Bad request: Invalid body: ${error.message}`, {
-          status: 400,
-        });
-      }
-    } else {
-      requestBody = undefined;
-    }
-
-    const response = await handler({
-      params: params ?? {},
-      query: requestQuery as Q extends object ? queryType<Q> : undefined | null,
-      body: requestBody as B extends object ? bodyType<B> : undefined | null,
+    const output = await handler({
+      ...input,
+      params: { ...input.params, ...params },
     });
 
-    switch (response.body.type) {
-      case "text/plain": {
-        return new Response(response.body.data, {
-          status: response.status,
-        });
-      }
-      case "application/json": {
-        return new Response(JSON.stringify(response.body.data), {
-          status: response.status,
-          headers: { "content-type": "application/json" },
-        });
-      }
-      case "multipart/form-data": {
-        return new Response(initFormData(response.body.data), {
-          status: response.status,
-        });
-      }
-      default: {
-        throw new Error(
-          `Unknown response body type ${response.body["type"]}`,
-        );
-      }
-    }
+    return transformOutput(output);
   };
 }
 

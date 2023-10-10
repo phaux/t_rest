@@ -3,11 +3,11 @@
  *
  * @internal
  */
-export function validateJson<T extends JsonSchema>(
-  schema: T,
+export function validateJson<JS extends JsonSchema>(
+  schema: JS,
   value: unknown,
   path: Array<string | number> = [],
-): jsonType<T> {
+): jsonType<JS> {
   const schemaTypes = Array.isArray(schema.type)
     ? schema.type
     : schema.type != null
@@ -23,22 +23,22 @@ export function validateJson<T extends JsonSchema>(
 
   if (value == null) {
     if (!schemaTypes.includes("null")) throw getError(String(value));
-    return value as jsonType<T>;
+    return value as jsonType<JS>;
   }
 
   if (typeof value == "string") {
     if (!schemaTypes.includes("string")) throw getError("string");
-    return value as jsonType<T>;
+    return value as jsonType<JS>;
   }
 
   if (typeof value == "number") {
     if (!schemaTypes.includes("number")) throw getError("number");
-    return value as jsonType<T>;
+    return value as jsonType<JS>;
   }
 
   if (typeof value == "boolean") {
     if (!schemaTypes.includes("boolean")) throw getError("boolean");
-    return value as jsonType<T>;
+    return value as jsonType<JS>;
   }
 
   if (Array.isArray(value)) {
@@ -51,7 +51,7 @@ export function validateJson<T extends JsonSchema>(
         [...path, index],
       );
     }
-    return result as jsonType<T>;
+    return result as jsonType<JS>;
   }
 
   if (typeof value == "object") {
@@ -73,7 +73,7 @@ export function validateJson<T extends JsonSchema>(
         [...path, propName],
       );
     }
-    return value as jsonType<T>;
+    return value as jsonType<JS>;
   }
 
   throw getError(typeof value);
@@ -95,38 +95,38 @@ type JsonType = "null" | "string" | "number" | "boolean" | "array" | "object";
 /**
  * Returns the type of a JSON value based on its schema.
  *
- * @template T The {@link JsonSchema}.
+ * @template JS The {@link JsonSchema}.
  */
-export type jsonType<T extends JsonSchema> =
+export type jsonType<JS extends JsonSchema> =
   | (
-    "null" extends arrayValues<T["type"]> ? null : never
+    "null" extends arrayValues<JS["type"]> ? null : never
   )
   | (
-    "string" extends arrayValues<T["type"]> ? string : never
+    "string" extends arrayValues<JS["type"]> ? string : never
   )
   | (
-    "number" extends arrayValues<T["type"]> ? number : never
+    "number" extends arrayValues<JS["type"]> ? number : never
   )
   | (
-    "boolean" extends arrayValues<T["type"]> ? boolean : never
+    "boolean" extends arrayValues<JS["type"]> ? boolean : never
   )
   | (
-    "array" extends arrayValues<T["type"]> ? (
+    "array" extends arrayValues<JS["type"]> ? (
         & unknown[]
         & (
-          T extends { items: infer S extends JsonSchema } ? jsonType<S>[]
+          JS extends { items: infer S extends JsonSchema } ? jsonType<S>[]
             : never
         )
       )
       : never
   )
   | (
-    "object" extends arrayValues<T["type"]> ? (
+    "object" extends arrayValues<JS["type"]> ? (
         & object
         & (
-          T extends
+          JS extends
             { properties: infer P extends { [key: string]: JsonSchema } } ? (
-              T extends { required: infer R extends readonly unknown[] } ? (
+              JS extends { required: infer R extends readonly unknown[] } ? (
                   & {
                     -readonly [K in keyof P as K extends R[number] ? K : never]:
                       jsonType<P[K]>;
@@ -146,7 +146,7 @@ export type jsonType<T extends JsonSchema> =
             : object
         )
         & (
-          T extends { additionalProperties: infer A extends JsonSchema } ? (
+          JS extends { additionalProperties: infer A extends JsonSchema } ? (
               { [key: string]: jsonType<A> }
             )
             : object

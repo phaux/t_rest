@@ -10,7 +10,7 @@ export interface LoggerOptions {
 }
 
 export function createLoggerMiddleware<
-  const H extends Handler,
+  H extends Handler,
 >(
   handler: H,
   options: LoggerOptions = {},

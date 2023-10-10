@@ -3,10 +3,10 @@
  *
  * @internal
  */
-export function validateQuery<T extends QuerySchema>(
-  schema: T,
+export function validateQuery<QS extends QuerySchema>(
+  schema: QS,
   value: URLSearchParams,
-): queryType<T> {
+): queryType<QS> {
   const result: Record<string, unknown> = {};
   for (const [paramName, paramSchema] of Object.entries(schema)) {
     const paramValue = value.get(paramName);
@@ -39,7 +39,7 @@ export function validateQuery<T extends QuerySchema>(
       }
     }
   }
-  return result as queryType<T>;
+  return result as queryType<QS>;
 }
 
 /**
@@ -54,11 +54,11 @@ export type QuerySchema = {
 /**
  * Returns the type of a query string data based on its schema.
  *
- * @template T The {@link QuerySchema}.
+ * @template QS The {@link QuerySchema}.
  */
-export type queryType<T extends QuerySchema> = {
-  -readonly [K in keyof T]: T[K]["type"] extends "string" ? string
-    : T[K]["type"] extends "number" ? number
-    : T[K]["type"] extends "integer" ? number
+export type queryType<QS extends QuerySchema> = {
+  -readonly [K in keyof QS]: QS[K]["type"] extends "string" ? string
+    : QS[K]["type"] extends "number" ? number
+    : QS[K]["type"] extends "integer" ? number
     : never;
 };

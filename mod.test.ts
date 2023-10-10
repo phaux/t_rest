@@ -877,3 +877,133 @@ Deno.test("values should be writable", async () => {
   controller.abort();
   await server.finished;
 });
+
+Deno.test("can send files as body", async () => {
+  // echo file server
+  const serveApi = createPathFilter({
+    "file": createMethodFilter({
+      POST: createEndpoint(
+        { query: null, body: { type: "application/octet-stream" } },
+        async ({ body }) => {
+          assertType<"application/octet-stream">(body.type);
+          assertType<Blob>(body.data);
+          return {
+            status: 200,
+            body: { type: "application/octet-stream", data: body.data },
+          };
+        },
+      ),
+    }),
+    "image": createMethodFilter({
+      POST: createEndpoint(
+        { query: null, body: { type: "image/jpeg" } },
+        async ({ body }) => {
+          assertType<"image/jpeg">(body.type);
+          assertType<Blob>(body.data);
+          return {
+            status: 200,
+            body: { type: "image/jpeg", data: body.data },
+          };
+        },
+      ),
+    }),
+    "audio": createMethodFilter({
+      POST: createEndpoint(
+        { query: null, body: { type: "audio/mpeg" } },
+        async ({ body }) => {
+          assertType<"audio/mpeg">(body.type);
+          assertType<Blob>(body.data);
+          return {
+            status: 200,
+            body: { type: "audio/mpeg", data: body.data },
+          };
+        },
+      ),
+    }),
+    "video": createMethodFilter({
+      POST: createEndpoint(
+        { query: null, body: { type: "video/mp4" } },
+        async ({ body }) => {
+          assertType<"video/mp4">(body.type);
+          assertType<Blob>(body.data);
+          return {
+            status: 200,
+            body: { type: "video/mp4", data: body.data },
+          };
+        },
+      ),
+    }),
+  });
+  const controller = new AbortController();
+  const server = Deno.serve(
+    { port: 8122, signal: controller.signal },
+    serveApi,
+  );
+  const fetchApi = createFetcher<typeof serveApi>({
+    baseUrl: "http://localhost:8122/",
+  });
+  await delay(100);
+  const file = new File([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])], "file.txt");
+  const image = new File([new Uint8Array(1024)], "image.jpg");
+  const audio = new File([new Uint8Array(1024)], "audio.mp3");
+  const video = new File([new Uint8Array(1024)], "video.mp4");
+  {
+    const fileResponse = await fetchApi("file", "POST", {
+      body: { type: "application/octet-stream", data: file },
+    });
+    if (fileResponse.status === 200) {
+      assertType<Blob>(fileResponse.body.data);
+      assertEquals(fileResponse.body.type, "application/octet-stream");
+      assertEquals(
+        await fileResponse.body.data.arrayBuffer(),
+        await file.arrayBuffer(),
+      );
+    } else {
+      throw new Error("fileResponse.status !== 200");
+    }
+  }
+  {
+    const imageResponse = await fetchApi("image", "POST", {
+      body: { type: "image/jpeg", data: image },
+    });
+    if (imageResponse.status === 200) {
+      assertEquals(imageResponse.body.type, "image/jpeg");
+      assertEquals(
+        await imageResponse.body.data.arrayBuffer(),
+        await image.arrayBuffer(),
+      );
+    } else {
+      throw new Error("imageResponse.status !== 200");
+    }
+  }
+  {
+    const audioResponse = await fetchApi("audio", "POST", {
+      body: { type: "audio/mpeg", data: audio },
+    });
+    if (audioResponse.status === 200) {
+      assertEquals(audioResponse.body.type, "audio/mpeg");
+      assertEquals(
+        await audioResponse.body.data.arrayBuffer(),
+        await audio.arrayBuffer(),
+      );
+    } else {
+      throw new Error("audioResponse.status !== 200");
+    }
+  }
+  {
+    const videoResponse = await fetchApi("video", "POST", {
+      body: { type: "video/mp4", data: video },
+    });
+    if (videoResponse.status === 200) {
+      assertEquals(videoResponse.body.type, "video/mp4");
+      assertEquals(
+        await videoResponse.body.data.arrayBuffer(),
+        await video.arrayBuffer(),
+      );
+    } else {
+      throw new Error("videoResponse.status !== 200");
+    }
+  }
+  controller.abort();
+  await server.finished;
+});

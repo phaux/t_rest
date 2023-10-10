@@ -11,3 +11,4 @@ export type { BodySchema, bodyType } from "./validateBody.ts";
 export type { FormDataSchema, formDataType } from "./validateFormData.ts";
 export type { JsonSchema, jsonType } from "./validateJson.ts";
 export type { QuerySchema, queryType } from "./validateQuery.ts";
+export type { InputSchema, inputType } from "./transformInput.ts";

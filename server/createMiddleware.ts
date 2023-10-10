@@ -1,7 +1,7 @@
 import { Handler } from "../common/Handler.ts";
 
 export function createMiddleware<
-  const H extends Handler,
+  H extends Handler,
 >(
   handler: H,
   middleware: (
