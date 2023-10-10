@@ -1,5 +1,6 @@
 export { createEndpoint } from "./createEndpoint.ts";
 export type { DefaultOutput } from "./createEndpoint.ts";
+export { createErrorBoundary } from "./createErrorBoundary.ts";
 export { createLoggerMiddleware } from "./createLoggerMiddleware.ts";
 export type { LoggerOptions } from "./createLoggerMiddleware.ts";
 export { createMethodFilter } from "./createMethodFilter.ts";
@@ -7,8 +8,8 @@ export type { MethodMap } from "./createMethodFilter.ts";
 export { createMiddleware } from "./createMiddleware.ts";
 export { createPathFilter } from "./createPathFilter.ts";
 export type { PathMap } from "./createPathFilter.ts";
+export type { InputSchema, inputType } from "./transformInput.ts";
 export type { BodySchema, bodyType } from "./validateBody.ts";
 export type { FormDataSchema, formDataType } from "./validateFormData.ts";
 export type { JsonSchema, jsonType } from "./validateJson.ts";
 export type { QuerySchema, queryType } from "./validateQuery.ts";
-export type { InputSchema, inputType } from "./transformInput.ts";

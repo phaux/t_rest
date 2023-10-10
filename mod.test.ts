@@ -5,6 +5,7 @@ import { delay } from "https://deno.land/std@0.203.0/async/delay.ts";
 import { createFetcher } from "./client/createFetcher.ts";
 import {
   createEndpoint,
+  createErrorBoundary,
   createLoggerMiddleware,
   createMethodFilter,
   createPathFilter,
@@ -1003,6 +1004,58 @@ Deno.test("can send files as body", async () => {
     } else {
       throw new Error("videoResponse.status !== 200");
     }
+  }
+  controller.abort();
+  await server.finished;
+});
+
+Deno.test("error boundary", async () => {
+  const serveApi = createErrorBoundary(
+    createEndpoint(
+      { query: { foo: { type: "string" } }, body: null },
+      async ({ query }) => {
+        if (query.foo === "error") {
+          throw new Error("oops");
+        }
+        return {
+          status: 200,
+          body: { type: "text/plain", data: "ok" },
+        };
+      },
+    ),
+    async (error) => ({
+      status: 501,
+      body: { type: "text/plain", data: error.message },
+    }),
+  );
+
+  const controller = new AbortController();
+  const server = Deno.serve(
+    { port: 8124, signal: controller.signal },
+    serveApi,
+  );
+  const fetchApi = createFetcher<typeof serveApi>({
+    baseUrl: "http://localhost:8124/",
+  });
+  await delay(100);
+  {
+    const response = await fetchApi("", "GET", {
+      query: { foo: "error" },
+    });
+    assertType<200 | 400 | 500 | 501>(response.status);
+    assertEquals(response, {
+      status: 501,
+      body: { type: "text/plain", data: "oops" },
+    });
+  }
+  {
+    const response = await fetchApi("", "GET", {
+      query: { foo: "bar" },
+    });
+    assertEquals(response, {
+      status: 200,
+      body: { type: "text/plain", data: "ok" },
+    });
   }
   controller.abort();
   await server.finished;
