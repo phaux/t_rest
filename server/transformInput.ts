@@ -54,10 +54,9 @@ export async function transformInput<IS extends InputSchema>(
 export type InputSchema<
   QS extends Nullable<QuerySchema> = Nullable<QuerySchema>,
   BS extends Nullable<BodySchema> = Nullable<BodySchema>,
-> = {
-  query: QS;
-  body: BS;
-};
+> =
+  & (QS extends object ? { query: QS } : { query?: Nullish })
+  & (BS extends object ? { body: BS } : { body?: Nullish });
 /**
  * Returns the concrete type of an {@link Input} based on its {@link InputSchema}.
  *

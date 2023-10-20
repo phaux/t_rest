@@ -1,5 +1,3 @@
-// deno-lint-ignore-file require-await
-
 import { assertEquals } from "https://deno.land/std@0.195.0/assert/assert_equals.ts";
 import { delay } from "https://deno.land/std@0.203.0/async/delay.ts";
 import { createFetcher } from "./client/createFetcher.ts";
@@ -166,7 +164,7 @@ Deno.test("subapi request", async () => {
   const serveApi = createPathFilter({
     "say/hello": createMethodFilter({
       GET: createEndpoint(
-        { query: { name: { type: "string" } }, body: null },
+        { query: { name: { type: "string" } } },
         async ({ query }) => {
           assertType<{ name: string }>(query);
           return {
@@ -310,7 +308,6 @@ Deno.test("request with body", async () => {
     "hello": createMethodFilter({
       POST: createEndpoint(
         {
-          query: null,
           body: {
             type: "text/plain",
           },
@@ -328,7 +325,6 @@ Deno.test("request with body", async () => {
       ),
       PUT: createEndpoint(
         {
-          query: null,
           body: {
             type: "application/json",
             schema: {
@@ -442,7 +438,7 @@ Deno.test("bad api definition is type error", async () => {
   const _serveApi = createMethodFilter({
     // @ts-expect-error - GET can't have a body
     GET: createEndpoint(
-      { query: null, body: { type: "text/plain" } },
+      { body: { type: "text/plain" } },
       async () => ({
         status: 200,
         body: { type: "text/plain", data: "Hello" },
@@ -450,7 +446,7 @@ Deno.test("bad api definition is type error", async () => {
     ),
     // @ts-expect-error - DELETE can't have a body
     DELETE: createEndpoint(
-      { query: null, body: { type: "text/plain" } },
+      { body: { type: "text/plain" } },
       async () => ({
         status: 200,
         body: { type: "text/plain", data: "Hello" },
@@ -460,7 +456,7 @@ Deno.test("bad api definition is type error", async () => {
   const _serve2 = createMethodFilter({
     // @ts-expect-error - invalid method
     FOO: createEndpoint(
-      { query: null, body: null },
+      {},
       async () => ({
         status: 200,
         body: { type: "text/plain", data: "Hello" },
@@ -473,7 +469,7 @@ Deno.test("on exception receives 500", async () => {
   const serveApi = createPathFilter({
     "": createMethodFilter({
       GET: createEndpoint(
-        { body: null, query: null },
+        {},
         async () => {
           throw new Error("oops");
         },
@@ -518,7 +514,6 @@ Deno.test("can return custom error", async () => {
               },
             },
           },
-          query: null,
         },
         async ({ body }) => {
           if (
@@ -696,7 +691,7 @@ Deno.test("takes path params", async () => {
     "users/{userId}": createPathFilter({
       "": createMethodFilter({
         "GET": createEndpoint(
-          { query: null, body: null },
+          {},
           async ({ params }) => {
             // assertType<{ userId: string }>(params);
             return {
@@ -711,7 +706,7 @@ Deno.test("takes path params", async () => {
       }),
       "{postId}": createMethodFilter({
         GET: createEndpoint(
-          { query: null, body: null },
+          {},
           async ({ params }) => {
             return {
               status: 200,
@@ -884,7 +879,7 @@ Deno.test("can send files as body", async () => {
   const serveApi = createPathFilter({
     "file": createMethodFilter({
       POST: createEndpoint(
-        { query: null, body: { type: "application/octet-stream" } },
+        { body: { type: "application/octet-stream" } },
         async ({ body }) => {
           assertType<"application/octet-stream">(body.type);
           assertType<Blob>(body.data);
@@ -897,7 +892,7 @@ Deno.test("can send files as body", async () => {
     }),
     "image": createMethodFilter({
       POST: createEndpoint(
-        { query: null, body: { type: "image/jpeg" } },
+        { body: { type: "image/jpeg" } },
         async ({ body }) => {
           assertType<"image/jpeg">(body.type);
           assertType<Blob>(body.data);
@@ -910,7 +905,7 @@ Deno.test("can send files as body", async () => {
     }),
     "audio": createMethodFilter({
       POST: createEndpoint(
-        { query: null, body: { type: "audio/mpeg" } },
+        { body: { type: "audio/mpeg" } },
         async ({ body }) => {
           assertType<"audio/mpeg">(body.type);
           assertType<Blob>(body.data);
@@ -923,7 +918,7 @@ Deno.test("can send files as body", async () => {
     }),
     "video": createMethodFilter({
       POST: createEndpoint(
-        { query: null, body: { type: "video/mp4" } },
+        { body: { type: "video/mp4" } },
         async ({ body }) => {
           assertType<"video/mp4">(body.type);
           assertType<Blob>(body.data);
@@ -1012,7 +1007,7 @@ Deno.test("can send files as body", async () => {
 Deno.test("error boundary", async () => {
   const serveApi = createErrorBoundary(
     createEndpoint(
-      { query: { foo: { type: "string" } }, body: null },
+      { query: { foo: { type: "string" } } },
       async ({ query }) => {
         if (query.foo === "error") {
           throw new Error("oops");
