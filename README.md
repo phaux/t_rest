@@ -19,8 +19,9 @@ const serveApi = createPathFilter({
   "hello": createMethodFilter({
     GET: createEndpoint(
       {
-        query: { name: { type: "string" } },
-        body: null,
+        query: {
+          name: { type: "string" },
+        },
       },
       async ({ query }) => {
         return {
